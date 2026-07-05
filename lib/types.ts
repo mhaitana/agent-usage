@@ -91,6 +91,16 @@ export interface Totals {
   lastSeen: string | null;
 }
 
+/** Per-adapter status surfaced in the final dataset for the header banner. */
+export interface AdapterStatus {
+  /** Display name, e.g. "Claude Code". */
+  name: string;
+  /** Whether the tool's data directory was present on this machine. */
+  available: boolean;
+  /** Number of sessions parsed from this adapter this run. */
+  sessions: number;
+}
+
 export interface UsageDataset {
   generatedAt: string;
   sessions: Session[];
@@ -98,8 +108,8 @@ export interface UsageDataset {
   byModel: ModelTotal[];
   byProject: ProjectTotal[];
   totals: Totals;
-  /** Whether the ~/.claude directory was found. */
-  foundClaudeDir: boolean;
+  /** Status per registered adapter (for the "no data found" banner). */
+  adapters: AdapterStatus[];
 }
 
 /** Subset of the assistant `message.usage` block we read. */

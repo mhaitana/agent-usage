@@ -12,56 +12,63 @@ import {
   TrendingUp,
 } from "@/components/ui/icons";
 
+/**
+ * Block-based KPI tile. Each tile carries a pastel block color used for the
+ * icon chip (thick dark border + hard offset shadow) and the accent strip,
+ * so the row reads as a strip of colored blocks. White card body keeps the
+ * value legible.
+ */
 function Tile({
   icon,
   label,
   value,
   sub,
+  block,
   className = "",
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   sub?: ReactNode;
+  /** CSS color (pastel var or hex) for the tile's block identity. */
+  block: string;
   className?: string;
 }) {
   return (
-    <Card hover className={`relative overflow-hidden p-4 ${className}`}>
-      {/* Accent rail — a 2px tinted edge that gives each tile a quiet identity. */}
-      <span
-        className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ background: "color-mix(in srgb, var(--accent) 70%, transparent)" }}
-        aria-hidden
-      />
-      <div className="flex items-center gap-2">
+    <Card hover className={`relative p-4 ${className}`}>
+      <div className="flex items-center gap-2.5">
+        {/* Pastel icon chip — 3px dark border + hard offset shadow. */}
         <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md"
+          className="inline-flex h-10 w-10 items-center justify-center"
           style={{
-            background: "var(--surface-sunken)",
-            color: "var(--text-secondary)",
-            fontSize: "0.95em",
+            background: block,
+            border: "3px solid var(--text)",
+            borderRadius: "var(--radius-chip)",
+            boxShadow: "3px 3px 0 var(--shadow-hard)",
+            color: "var(--ink)",
+            fontSize: "1.1em",
           }}
           aria-hidden
         >
           {icon}
         </span>
         <span
-          className="text-[11px] font-medium uppercase tracking-wider"
-          style={{ color: "var(--text-muted)" }}
+          className="pill inline-block px-2.5 py-1 text-[10px] uppercase tracking-wider"
+          style={{ background: block, fontSize: "10px" }}
         >
           {label}
         </span>
       </div>
       <div
-        className="tabular mt-3 text-[26px] font-semibold leading-none tracking-tight"
-        style={{ color: "var(--text-primary)" }}
+        className="tabular mt-3 text-[26px] font-extrabold leading-none tracking-tight"
+        style={{ color: "var(--text)" }}
       >
         {value}
       </div>
       {sub && (
         <div
-          className="mt-2 text-xs leading-snug"
-          style={{ color: "var(--text-secondary)" }}
+          className="mt-2 text-xs font-medium leading-snug"
+          style={{ color: "var(--text-muted)" }}
         >
           {sub}
         </div>
@@ -88,33 +95,56 @@ export default function KpiTiles({
     : 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {/* Hero KPI — spans 2 cols on large screens, carries the trend sparkline. */}
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      {/* Hero KPI — spans 2 cols on large screens, carries the trend sparkline
+          and two decorative pastel shapes on its corners. */}
       <Card hover className="relative overflow-hidden p-4 lg:col-span-2">
+        {/* Decorative shapes (neo-brutalist clay accent). */}
         <span
-          className="absolute inset-y-0 left-0 w-[3px]"
-          style={{ background: "var(--series-1)" }}
           aria-hidden
+          className="absolute -top-4 -right-4 h-14 w-14 rotate-6"
+          style={{
+            background: "var(--accent-mint)",
+            border: "3px solid var(--text)",
+            borderRadius: "var(--radius-chip)",
+            boxShadow: "3px 3px 0 var(--shadow-hard)",
+          }}
         />
-        <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="absolute -bottom-4 -left-4 h-10 w-10 rounded-full"
+          style={{
+            background: "var(--accent-coral)",
+            border: "3px solid var(--text)",
+            boxShadow: "2px 2px 0 var(--shadow-hard)",
+          }}
+        />
+        <div className="relative flex items-center gap-2.5">
           <span
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md"
-            style={{ background: "var(--surface-sunken)", color: "var(--series-1)", fontSize: "0.95em" }}
+            className="inline-flex h-10 w-10 items-center justify-center"
+            style={{
+              background: "var(--block-1)",
+              border: "3px solid var(--text)",
+              borderRadius: "var(--radius-chip)",
+              boxShadow: "3px 3px 0 var(--shadow-hard)",
+              color: "var(--ink)",
+              fontSize: "1.1em",
+            }}
             aria-hidden
           >
             <TrendingUp />
           </span>
           <span
-            className="text-[11px] font-medium uppercase tracking-wider"
-            style={{ color: "var(--text-muted)" }}
+            className="pill inline-block px-2.5 py-1 text-[10px] uppercase tracking-wider"
+            style={{ background: "var(--block-1)" }}
           >
             Total tokens
           </span>
         </div>
-        <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="relative mt-3 flex items-end justify-between gap-3">
           <div
-            className="tabular text-[26px] font-semibold leading-none tracking-tight"
-            style={{ color: "var(--text-primary)" }}
+            className="tabular text-[30px] font-extrabold leading-none tracking-tight"
+            style={{ color: "var(--text)" }}
           >
             {formatTokens(totals.totalTokens)}
           </div>
@@ -127,11 +157,11 @@ export default function KpiTiles({
           )}
         </div>
         <div
-          className="mt-2 flex items-center gap-3 text-xs"
-          style={{ color: "var(--text-secondary)" }}
+          className="relative mt-2 flex items-center gap-2 text-xs font-semibold"
+          style={{ color: "var(--text-muted)" }}
         >
           <span className="tabular">{formatTokens(totals.outputTokens)} output</span>
-          <span style={{ color: "var(--baseline)" }}>·</span>
+          <span style={{ color: "var(--border)" }}>·</span>
           <span className="tabular">{formatTokens(last7Tokens)} last 7d</span>
         </div>
       </Card>
@@ -139,11 +169,12 @@ export default function KpiTiles({
       <Tile
         icon={<Coins />}
         label="Est. cost"
+        block="var(--block-2)"
         value={formatCost(totals.cost)}
         sub={
           <span>
-            <span className="tabular">{formatCost(last7Cost)}</span> last 7d ·{" "}
-            <span className="tabular">{formatCost(avgCostPerSession)}</span>/session
+            <span className="tabular font-bold" style={{ color: "var(--text)" }}>{formatCost(last7Cost)}</span> last 7d ·{" "}
+            <span className="tabular font-bold" style={{ color: "var(--text)" }}>{formatCost(avgCostPerSession)}</span>/session
             <span className="block" style={{ color: "var(--text-muted)" }}>
               API-equiv, not your subscription bill
             </span>
@@ -153,9 +184,10 @@ export default function KpiTiles({
       <Tile
         icon={<Messages />}
         label="Sessions"
+        block="var(--block-3)"
         value={totals.sessions.toLocaleString()}
         sub={
-          <span className="tabular">
+          <span className="tabular font-bold" style={{ color: "var(--text)" }}>
             {totals.messages.toLocaleString()} messages
           </span>
         }
@@ -163,9 +195,10 @@ export default function KpiTiles({
       <Tile
         icon={<Wrench />}
         label="Tool calls"
+        block="var(--block-4)"
         value={totals.toolCalls.toLocaleString()}
         sub={
-          <span className="tabular">
+          <span className="tabular font-bold" style={{ color: "var(--text)" }}>
             {totals.sessions
               ? (totals.toolCalls / totals.sessions).toFixed(1)
               : "0"}{" "}
@@ -176,16 +209,18 @@ export default function KpiTiles({
       <Tile
         icon={<Cpu />}
         label="Cache read"
+        block="var(--block-5)"
         value={formatTokens(totals.cacheReadTokens)}
         sub={
-          <span style={{ color: "var(--text-muted)" }}>
-            of <span className="tabular">{formatTokens(totals.inputTokens + totals.cacheReadTokens)}</span> total in
+          <span>
+            of <span className="tabular font-bold" style={{ color: "var(--text)" }}>{formatTokens(totals.inputTokens + totals.cacheReadTokens)}</span> total in
           </span>
         }
       />
       <Tile
         icon={<Calendar />}
         label="Active window"
+        block="var(--block-6)"
         value={formatDate(totals.firstSeen)}
         sub={
           <span style={{ color: "var(--text-muted)" }}>

@@ -31,8 +31,8 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
                   innerRadius={52}
                   outerRadius={82}
                   paddingAngle={2}
-                  stroke="var(--surface-1)"
-                  strokeWidth={2}
+                  stroke="var(--text)"
+                  strokeWidth={3}
                   isAnimationActive={false}
                 >
                   {data.map((d) => (
@@ -44,13 +44,13 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <span
-                className="tabular text-lg font-semibold leading-none"
-                style={{ color: "var(--text-primary)" }}
+                className="tabular text-xl font-extrabold leading-none"
+                style={{ color: "var(--text)" }}
               >
                 {formatTokens(grandTotal)}
               </span>
               <span
-                className="mt-1 text-[10px] uppercase tracking-wider"
+                className="mt-1 text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-muted)" }}
               >
                 tokens
@@ -66,26 +66,32 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
                     <span className="inline-flex min-w-0 items-center gap-1.5">
                       <span
                         className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-                        style={{ background: colorMap.get(d.name) }}
+                        style={{
+                          background: colorMap.get(d.name),
+                          border: "2px solid var(--text)",
+                        }}
                       />
                       <span
-                        className="truncate"
-                        style={{ color: "var(--text-secondary)" }}
+                        className="truncate font-semibold"
+                        style={{ color: "var(--text)" }}
                       >
                         {d.name}
                       </span>
                     </span>
                     <span
-                      className="tabular shrink-0 font-medium"
-                      style={{ color: "var(--text-primary)" }}
+                      className="tabular shrink-0 font-extrabold"
+                      style={{ color: "var(--text)" }}
                     >
                       {pct.toFixed(1)}%
                     </span>
                   </div>
                   {/* Share bar — encodes magnitude without relying on color alone. */}
                   <div
-                    className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full"
-                    style={{ background: "var(--surface-sunken)" }}
+                    className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full"
+                    style={{
+                      background: "var(--bg-sunken)",
+                      border: "2px solid var(--text)",
+                    }}
                   >
                     <div
                       className="h-full rounded-full transition-[width] duration-300"
@@ -125,16 +131,22 @@ function ModelTooltip({
   const p = payload[0].payload;
   return (
     <div
-      className="rounded-lg border p-2.5 text-xs shadow-[var(--shadow-lg)]"
-      style={{ background: "var(--surface-2)", borderColor: "var(--border-strong)" }}
+      className="text-xs"
+      style={{
+        background: "var(--bg)",
+        border: "3px solid var(--text)",
+        borderRadius: "var(--radius-card)",
+        boxShadow: "5px 5px 0 var(--shadow-hard)",
+        padding: "12px",
+      }}
     >
-      <div className="font-medium" style={{ color: "var(--text-primary)" }}>
+      <div className="font-bold" style={{ color: "var(--text)" }}>
         {p.name}
       </div>
-      <div className="tabular" style={{ color: "var(--text-secondary)" }}>
+      <div className="tabular" style={{ color: "var(--text-muted)" }}>
         {formatTokens(p.tokens)} tokens
       </div>
-      <div className="tabular" style={{ color: "var(--text-secondary)" }}>
+      <div className="tabular" style={{ color: "var(--text-muted)" }}>
         {formatCost(p.cost)}
       </div>
     </div>

@@ -71,18 +71,18 @@ export default function DailyChart({ daily }: Props) {
               <defs>
                 {visibleModels.map((m) => (
                   <linearGradient key={m} id={`grad-${cssId(m)}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={colorMap.get(m)} stopOpacity={0.85} />
-                    <stop offset="100%" stopColor={colorMap.get(m)} stopOpacity={0.35} />
+                    <stop offset="0%" stopColor={colorMap.get(m)} stopOpacity={0.95} />
+                    <stop offset="100%" stopColor={colorMap.get(m)} stopOpacity={0.7} />
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid stroke="var(--gridline)" vertical={false} />
+              <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={(v) => formatDay(String(v))}
                 tick={{ fill: "var(--text-muted)", fontSize: 11 }}
                 tickLine={false}
-                axisLine={{ stroke: "var(--baseline)" }}
+                axisLine={{ stroke: "var(--border)" }}
                 minTickGap={28}
               />
               <YAxis
@@ -102,11 +102,12 @@ export default function DailyChart({ daily }: Props) {
                   type="monotone"
                   dataKey={m}
                   stackId="1"
-                  stroke={colorMap.get(m)}
+                  stroke="var(--text)"
                   strokeWidth={1.5}
                   fill={`url(#grad-${cssId(m)})`}
-                  // Subtle gap between stacked segments.
-                  fillOpacity={i === visibleModels.length - 1 ? 1 : 0.92}
+                  // Top band solid; lower bands slightly translucent so the
+                  // dark separator strokes between stacked bands stay visible.
+                  fillOpacity={i === visibleModels.length - 1 ? 1 : 0.9}
                   isAnimationActive={false}
                 />
               ))}
@@ -144,29 +145,38 @@ function DailyTooltip({
   const total = rows.reduce((s, r) => s + Number(r.value), 0);
   return (
     <div
-      className="rounded-lg border p-2.5 text-xs shadow-[var(--shadow-lg)]"
-      style={{ background: "var(--surface-2)", borderColor: "var(--border-strong)" }}
+      className="text-xs"
+      style={{
+        background: "var(--bg)",
+        border: "3px solid var(--text)",
+        borderRadius: "var(--radius-card)",
+        boxShadow: "5px 5px 0 var(--shadow-hard)",
+        padding: "12px",
+      }}
     >
-      <div className="mb-1.5 font-medium" style={{ color: "var(--text-primary)" }}>
+      <div className="mb-1.5 font-medium" style={{ color: "var(--text)" }}>
         {label ? formatFullDate(String(label)) : ""}
       </div>
       {rows.map((r) => (
         <div key={r.dataKey} className="flex items-center gap-2.5 tabular">
           <span
             className="inline-block h-2 w-2 rounded-sm"
-            style={{ background: colorMap.get(r.dataKey) }}
+            style={{
+              background: colorMap.get(r.dataKey),
+              border: "1.5px solid var(--text)",
+            }}
           />
-          <span className="grow" style={{ color: "var(--text-secondary)" }}>
+          <span className="grow" style={{ color: "var(--text-muted)" }}>
             {r.dataKey}
           </span>
-          <span style={{ color: "var(--text-primary)" }}>
+          <span style={{ color: "var(--text)" }}>
             {formatTokens(Number(r.value))}
           </span>
         </div>
       ))}
       <div
         className="mt-1.5 flex justify-between border-t pt-1.5 tabular font-medium"
-        style={{ borderColor: "var(--gridline)", color: "var(--text-primary)" }}
+        style={{ borderColor: "var(--border)", color: "var(--text)" }}
       >
         <span>Total</span>
         <span>{formatTokens(total)}</span>
@@ -187,7 +197,7 @@ function Legend({
   onToggle: (m: string) => void;
 }) {
   return (
-    <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-3 text-xs" style={{ borderColor: "var(--border-ring)" }}>
+    <div className="mt-4 flex flex-wrap gap-2 border-t-[3px] pt-4 text-xs" style={{ borderColor: "var(--text)" }}>
       {models.map((m) => {
         const isHidden = hidden.has(m);
         return (
@@ -197,11 +207,10 @@ function Legend({
             onClick={() => onToggle(m)}
             aria-pressed={!isHidden}
             title={isHidden ? `Show ${m}` : `Hide ${m}`}
-            className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 transition-colors duration-150"
+            className="pill clay-press inline-flex items-center gap-1.5 px-2.5 py-1"
             style={{
-              background: isHidden ? "transparent" : "var(--surface-sunken)",
-              borderColor: "var(--border-ring)",
-              color: isHidden ? "var(--text-muted)" : "var(--text-secondary)",
+              background: isHidden ? "transparent" : "var(--accent-mint)",
+              color: isHidden ? "var(--text-muted)" : "var(--ink)",
               cursor: "pointer",
             }}
           >
@@ -209,6 +218,7 @@ function Legend({
               className="inline-block h-2.5 w-2.5 rounded-sm"
               style={{
                 background: colorMap.get(m),
+                border: "2px solid var(--text)",
                 opacity: isHidden ? 0.35 : 1,
               }}
             />

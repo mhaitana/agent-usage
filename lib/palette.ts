@@ -1,14 +1,16 @@
 // Categorical palette mirroring the CSS vars in globals.css.
-// Slots assigned in fixed order (the dataviz skill's CVD-safe order).
+// On-theme pastel chart palette (claymorphism × neo-brutalism). Category
+// separation comes from the thick dark borders on segments/bars, not from
+// saturated color — so pastels carry the theme without hurting legibility.
 export const SERIES = [
-  "var(--series-1)",
-  "var(--series-2)",
-  "var(--series-3)",
-  "var(--series-4)",
-  "var(--series-5)",
-  "var(--series-6)",
-  "var(--series-7)",
-  "var(--series-8)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
 ] as const;
 
 export function seriesColor(index: number): string {

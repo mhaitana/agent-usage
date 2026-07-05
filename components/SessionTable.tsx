@@ -115,10 +115,9 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
           }
         />
         <div
-          className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors focus-within:border-[var(--accent)]"
+          className="clay-chip flex items-center gap-2 px-3 py-1.5 transition-colors focus-within:border-[var(--cta)]"
           style={{
-            background: "var(--surface-sunken)",
-            borderColor: "var(--border-ring)",
+            background: "var(--bg-sunken)",
           }}
         >
           <Search style={{ fontSize: "0.9em", color: "var(--text-muted)" }} />
@@ -132,7 +131,7 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
             placeholder="Filter by project, title, model…"
             aria-label="Filter sessions"
             className="w-44 bg-transparent text-xs outline-none placeholder:text-[var(--text-muted)] sm:w-56"
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: "var(--text)" }}
           />
           {query && (
             <button
@@ -162,9 +161,9 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
               </caption>
               <thead
                 className="sticky top-0 z-10"
-                style={{ background: "var(--surface-1)" }}
+                style={{ background: "var(--bg)" }}
               >
-                <tr style={{ borderBottom: "1px solid var(--border-ring)" }}>
+                <tr style={{ borderBottom: "2px solid var(--text)" }}>
                   {COLUMNS.map((c) => {
                     const isSorted = sortKey === c.key;
                     const ariaSort = !c.sortable
@@ -185,9 +184,9 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
                           <button
                             type="button"
                             onClick={() => onHeaderClick(c.key, c.sortable)}
-                            className="inline-flex items-center gap-1 rounded px-0.5 py-0.5 transition-colors duration-150 hover:bg-[var(--surface-sunken)]"
+                            className="inline-flex items-center gap-1 rounded px-0.5 py-0.5 transition-colors duration-150 hover:bg-[var(--bg-sunken)]"
                             style={{
-                              color: isSorted ? "var(--text-primary)" : "var(--text-secondary)",
+                              color: isSorted ? "var(--text)" : "var(--text-muted)",
                               cursor: "pointer",
                               userSelect: "none",
                               whiteSpace: "nowrap",
@@ -208,7 +207,7 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
                         ) : (
                           <span
                             style={{
-                              color: "var(--text-secondary)",
+                              color: "var(--text-muted)",
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -225,20 +224,20 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
                   <tr key={s.sessionId} className="session-row">
                     <td
                       className="px-3 py-2 whitespace-nowrap"
-                      style={{ color: "var(--text-secondary)" }}
+                      style={{ color: "var(--text-muted)" }}
                     >
                       {formatDate(s.lastSeen)}
                     </td>
                     <td
                       className="px-3 py-2 font-medium"
-                      style={{ color: "var(--text-primary)" }}
+                      style={{ color: "var(--text)" }}
                     >
                       {s.project}
                     </td>
                     <td
                       className="max-w-[280px] truncate px-3 py-2"
                       title={s.title ?? ""}
-                      style={{ color: "var(--text-secondary)" }}
+                      style={{ color: "var(--text-muted)" }}
                     >
                       {s.title ?? <span style={{ color: "var(--text-muted)" }}>—</span>}
                     </td>
@@ -247,10 +246,12 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
                         {s.models.map((m) => (
                           <span
                             key={m}
-                            className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium"
+                            className="inline-block px-1.5 py-0.5 text-[10px] font-extrabold"
                             style={{
-                              background: `color-mix(in srgb, ${colorMap.get(m)} 14%, transparent)`,
-                              color: `color-mix(in srgb, ${colorMap.get(m)} 82%, var(--text-primary) 18%)`,
+                              background: `color-mix(in srgb, ${colorMap.get(m)} 22%, var(--bg))`,
+                              color: "var(--text)",
+                              borderRadius: "var(--radius-pill)",
+                              border: "2px solid var(--text)",
                             }}
                           >
                             {m}
@@ -258,23 +259,23 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
                         ))}
                       </div>
                     </td>
-                    <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
+                    <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-muted)" }}>
                       {s.messageCount.toLocaleString()}
                     </td>
-                    <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
+                    <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-muted)" }}>
                       {s.toolCallCount.toLocaleString()}
                     </td>
                     <td
                       className="tabular px-3 py-2 text-right font-medium"
-                      style={{ color: "var(--text-primary)" }}
+                      style={{ color: "var(--text)" }}
                       title={formatFullTokens(s.totalTokens)}
                     >
                       {formatTokens(s.totalTokens)}
                     </td>
-                    <td className="tabular px-3 py-2 text-right font-medium" style={{ color: "var(--text-primary)" }}>
+                    <td className="tabular px-3 py-2 text-right font-medium" style={{ color: "var(--text)" }}>
                       {formatCost(s.cost)}
                     </td>
-                    <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-secondary)" }}>
+                    <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-muted)" }}>
                       {formatDuration(s.durationMs)}
                     </td>
                   </tr>
@@ -285,19 +286,13 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
 
           {hasMore && (
             <div
-              className="flex items-center justify-center border-t px-4 py-2.5"
-              style={{ borderColor: "var(--border-ring)" }}
+              className="flex items-center justify-center border-t-[3px] px-4 py-3"
+              style={{ borderColor: "var(--text)" }}
             >
               <button
                 type="button"
                 onClick={() => setLimit((l) => l + 50)}
-                className="rounded-md border px-3 py-1 text-xs font-medium transition-colors duration-150"
-                style={{
-                  background: "var(--surface-sunken)",
-                  borderColor: "var(--border-ring)",
-                  color: "var(--text-secondary)",
-                  cursor: "pointer",
-                }}
+                className="btn-secondary clay-press px-4 py-2 text-xs"
               >
                 Show {sorted.length - limit} more of {sorted.length}
               </button>

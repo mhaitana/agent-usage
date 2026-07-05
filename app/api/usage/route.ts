@@ -1,4 +1,4 @@
-import { getUsageDataset } from "@/lib/claude-data";
+import { getUsageDataset } from "@/lib/usage-data";
 
 // Always live — never cache this route.
 export const dynamic = "force-dynamic";

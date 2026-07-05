@@ -37,17 +37,3 @@ export function formatDate(iso: string | null): string {
     minute: "2-digit",
   });
 }
-
-export function humanizeProjectSlug(slug: string): string {
-  // Slugs look like -Users-techtana-Projects-perkr
-  const markers = ["-Projects-", "-project-", "-projects-"];
-  for (const m of markers) {
-    const idx = slug.indexOf(m);
-    if (idx >= 0) {
-      const tail = slug.slice(idx + m.length);
-      return tail.replace(/-/g, "/").replace(/^\/+|\/+$/g, "") || slug;
-    }
-  }
-  // Fallback: strip leading dashes.
-  return slug.replace(/^-+/, "");
-}

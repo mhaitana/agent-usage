@@ -62,13 +62,20 @@ export default function ProjectBreakdown({
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
+              tick={{ fill: "var(--text-muted)", fontSize: 11 }}
               tickLine={false}
               axisLine={false}
               width={140}
             />
-            <Tooltip content={<ProjectTooltip />} cursor={{ fill: "var(--gridline)", radius: 4 }} />
-            <Bar dataKey="tokens" radius={[0, 4, 4, 0]} isAnimationActive={false} maxBarSize={22}>
+            <Tooltip content={<ProjectTooltip />} cursor={{ fill: "var(--border)", radius: 4 }} />
+            <Bar
+              dataKey="tokens"
+              radius={[0, 4, 4, 0]}
+              stroke="var(--text)"
+              strokeWidth={2}
+              isAnimationActive={false}
+              maxBarSize={22}
+            >
               {data.map((d) => (
                 <Cell key={d.name} fill={d.color} />
               ))}
@@ -103,13 +110,19 @@ function ProjectTooltip({
   const p = payload[0].payload;
   return (
     <div
-      className="rounded-lg border p-2.5 text-xs shadow-[var(--shadow-lg)]"
-      style={{ background: "var(--surface-2)", borderColor: "var(--border-strong)" }}
+      className="text-xs"
+      style={{
+        background: "var(--bg)",
+        border: "3px solid var(--text)",
+        borderRadius: "var(--radius-card)",
+        boxShadow: "5px 5px 0 var(--shadow-hard)",
+        padding: "12px",
+      }}
     >
-      <div className="font-medium" style={{ color: "var(--text-primary)" }}>
+      <div className="font-bold" style={{ color: "var(--text)" }}>
         {p.name}
       </div>
-      <div className="tabular" style={{ color: "var(--text-secondary)" }}>
+      <div className="tabular" style={{ color: "var(--text-muted)" }}>
         {formatTokens(p.tokens)} tokens · {formatCost(p.cost)}
       </div>
       <div className="tabular" style={{ color: "var(--text-muted)" }}>
