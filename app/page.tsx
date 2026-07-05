@@ -5,6 +5,7 @@ import DailyChart from "@/components/DailyChart";
 import ModelBreakdown from "@/components/ModelBreakdown";
 import ProjectBreakdown from "@/components/ProjectBreakdown";
 import SessionTable from "@/components/SessionTable";
+import { Github } from "@/components/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -80,9 +81,23 @@ export default async function Home() {
             color: "var(--text-muted)",
           }}
         >
-          Token totals include input, output, cache-creation, and cache-read
-          tokens. Cost is an API-price equivalent, not your Pro/Max subscription
-          bill.
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-prose">
+              Token totals include input, output, cache-creation, and cache-read
+              tokens. Cost is an API-price equivalent, not your Pro/Max
+              subscription bill.
+            </p>
+            <a
+              href="https://github.com/mhaitana/agent-usage"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pill clay-press inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-xs"
+              style={{ background: "var(--bg-sunken)" }}
+            >
+              <Github title="GitHub repo" />
+              <span>mhaitana/agent-usage</span>
+            </a>
+          </div>
         </footer>
       </main>
     </div>

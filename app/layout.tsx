@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,7 +46,11 @@ export default function RootLayout({
       {/* suppressHydrationWarning: the boot script mutates data-theme before
           React hydrates, and browser extensions inject body attributes — both
           are benign mismatches we intentionally suppress. */}
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        {children}
+        {/* Vercel Analytics — no-op locally; reports page views on Vercel. */}
+        <Analytics />
+      </body>
     </html>
   );
 }

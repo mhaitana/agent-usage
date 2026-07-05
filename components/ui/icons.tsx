@@ -163,3 +163,22 @@ export const Monitor = (p: IconProps) => (
     <path d="M8 21h8M12 17v4" />
   </Base>
 );
+
+/** GitHub mark — filled silhouette (uses fill, unlike the stroke-based set). */
+export function Github({ title, ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      aria-hidden={title ? undefined : true}
+      role={title ? "img" : undefined}
+      aria-label={title}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.21 3.44 9.63 8.21 11.2.6.11.82-.26.82-.58 0-.29-.01-1.04-.01-2.05-3.34.71-4.04-1.58-4.04-1.58-.55-1.37-1.34-1.74-1.34-1.74-1.09-.73.08-.72.08-.72 1.21.08 1.84 1.22 1.84 1.22 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.57-2.67-.3-5.47-1.31-5.47-5.84 0-1.29.47-2.35 1.23-3.18-.12-.3-.53-1.51.12-3.15 0 0 1-.32 3.3 1.21a11.6 11.6 0 0 1 6 0c2.28-1.53 3.29-1.21 3.29-1.21.65 1.64.24 2.85.12 3.15.77.83 1.23 1.89 1.23 3.18 0 4.54-2.81 5.54-5.49 5.83.43.36.81 1.08.81 2.18 0 1.58-.01 2.85-.01 3.24 0 .32.21.7.82.58A12.04 12.04 0 0 0 24 12.29C24 5.78 18.63.5 12 .5z" />
+    </svg>
+  );
+}
