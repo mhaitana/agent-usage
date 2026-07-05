@@ -1,15 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  /* dataviz skill palette — light mode */
-  --surface-1: #fcfcfb;
-  --page-plane: #f9f9f7;
+  /* dataviz skill palette — light mode (CVD-safe). Chart series must use
+     --series-*; surfaces/text use the semantic tokens below. */
+  --surface-1: #fcfcfb; /* card */
+  --surface-2: #ffffff; /* raised / hover */
+  --surface-sunken: #f4f3f0; /* page inset, table zebra */
+  --page-plane: #f7f7f4; /* app background */
   --text-primary: #0b0b0b;
   --text-secondary: #52514e;
   --text-muted: #898781;
-  --gridline: #e1e0d9;
-  --baseline: #c3c2b7;
+  --gridline: #e7e6df;
+  --baseline: #cfcec2;
   --border-ring: rgba(11, 11, 11, 0.1);
+  --border-strong: rgba(11, 11, 11, 0.16);
+  --accent: #2a78d6; /* matches --series-1 for interactive highlights */
+  --focus-ring: #2a78d6;
+
+  /* Elevation: one consistent shadow scale for cards/hover/overlays. */
+  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.04);
+  --shadow-md: 0 2px 6px rgba(11, 11, 11, 0.06), 0 1px 2px rgba(11, 11, 11, 0.04);
+  --shadow-lg: 0 8px 24px rgba(11, 11, 11, 0.08), 0 2px 6px rgba(11, 11, 11, 0.05);
 
   --series-1: #2a78d6; /* blue   */
   --series-2: #1baf7a; /* aqua   */
@@ -24,13 +35,22 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --surface-1: #1a1a19;
-    --page-plane: #0d0d0d;
+    --surface-2: #202020;
+    --surface-sunken: #141413;
+    --page-plane: #0c0c0b;
     --text-primary: #ffffff;
     --text-secondary: #c3c2b7;
     --text-muted: #898781;
     --gridline: #2c2c2a;
     --baseline: #383835;
     --border-ring: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --accent: #3987e5;
+    --focus-ring: #5b9bf0;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
 
     --series-1: #3987e5;
     --series-2: #199e70;
@@ -47,9 +67,84 @@ html,
 body {
   background: var(--page-plane);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* System font stack — local only, no external font requests. Monospace
+     fallback gives numerics a precise, dashboard-appropriate feel via
+     .tabular/.num elements that opt in. */
+  font-family:
+    system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv01", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-.tabular {
+/* Tabular figures for data columns, KPIs, tooltips — prevents layout shift
+   as values change and reads as a real analytics surface. */
+.tabular,
+.num {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Monospace numerics for token counts / ids — technical dashboard cue. */
+.mono {
+  font-family:
+    ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", "Menlo",
+    "Consolas", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visible focus ring for keyboard navigation across all interactives. */
+:where(button, a, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Custom scrollbars — subtle, theme-aware. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--baseline) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--baseline);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  background-clip: content-box;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* Session table rows: subtle zebra striping with a hover state that wins
+   (hover listed after nth-child → higher source order at equal specificity). */
+.session-row {
+  border-bottom: 1px solid var(--gridline);
+  transition: background-color 0.12s ease-out;
+}
+.session-row:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-sunken) 55%, transparent);
+}
+.session-row:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+
+/* Respect reduced-motion: disable all transitions/animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }

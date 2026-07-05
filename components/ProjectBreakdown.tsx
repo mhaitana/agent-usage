@@ -8,10 +8,12 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  LabelList,
 } from "recharts";
 import type { ProjectTotal } from "@/lib/types";
 import { seriesColor } from "@/lib/palette";
 import { formatCost, formatTokens } from "@/lib/format";
+import { Card, CardHeader } from "@/components/ui/Card";
 
 export default function ProjectBreakdown({
   byProject,
@@ -31,14 +33,25 @@ export default function ProjectBreakdown({
     }));
 
   return (
-    <Frame title="By project" subtitle="Top projects by tokens">
+    <Card className="p-4" hover>
+      <CardHeader
+        title="By project"
+        subtitle="Top projects by tokens"
+        action={
+          data.length > 0 ? (
+            <span className="tabular" style={{ color: "var(--text-muted)" }}>
+              {data.length} shown
+            </span>
+          ) : undefined
+        }
+      />
       {data.length === 0 ? (
-        <div className="py-8 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+        <div className="py-16 text-center text-sm" style={{ color: "var(--text-muted)" }}>
           No project data.
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={Math.max(160, data.length * 28)}>
-          <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16, top: 0, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height={Math.max(180, data.length * 32)}>
+          <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 0, bottom: 0 }}>
             <XAxis
               type="number"
               tickFormatter={(v) => formatTokens(Number(v))}
@@ -52,18 +65,24 @@ export default function ProjectBreakdown({
               tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
               tickLine={false}
               axisLine={false}
-              width={120}
+              width={140}
             />
-            <Tooltip content={<ProjectTooltip />} cursor={{ fill: "var(--gridline)" }} />
-            <Bar dataKey="tokens" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+            <Tooltip content={<ProjectTooltip />} cursor={{ fill: "var(--gridline)", radius: 4 }} />
+            <Bar dataKey="tokens" radius={[0, 4, 4, 0]} isAnimationActive={false} maxBarSize={22}>
               {data.map((d) => (
                 <Cell key={d.name} fill={d.color} />
               ))}
+              <LabelList
+                dataKey="tokens"
+                position="right"
+                formatter={(v: unknown) => formatTokens(Number(v))}
+                style={{ fill: "var(--text-muted)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       )}
-    </Frame>
+    </Card>
   );
 }
 
@@ -84,8 +103,8 @@ function ProjectTooltip({
   const p = payload[0].payload;
   return (
     <div
-      className="rounded-md border p-2 text-xs shadow-sm"
-      style={{ background: "var(--surface-1)", borderColor: "var(--border-ring)" }}
+      className="rounded-lg border p-2.5 text-xs shadow-[var(--shadow-lg)]"
+      style={{ background: "var(--surface-2)", borderColor: "var(--border-strong)" }}
     >
       <div className="font-medium" style={{ color: "var(--text-primary)" }}>
         {p.name}
@@ -96,35 +115,6 @@ function ProjectTooltip({
       <div className="tabular" style={{ color: "var(--text-muted)" }}>
         {p.sessions} session{p.sessions === 1 ? "" : "s"}
       </div>
-    </div>
-  );
-}
-
-function Frame({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="rounded-lg border p-4"
-      style={{ background: "var(--surface-1)", borderColor: "var(--border-ring)" }}
-    >
-      <div className="mb-3">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-          {title}
-        </h2>
-        {subtitle && (
-          <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {subtitle}
-          </div>
-        )}
-      </div>
-      {children}
     </div>
   );
 }
