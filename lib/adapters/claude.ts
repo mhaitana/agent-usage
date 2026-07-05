@@ -15,7 +15,8 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
-import { costOf } from "@/lib/pricing";
+import { costOf } from "@/lib/pricing/anthropic";
+import { tilde } from "@/lib/format";
 import type { AssistantUsage, Session } from "@/lib/types";
 import type { Adapter, DiscoveredSession } from "./types";
 
@@ -251,6 +252,7 @@ function toSession(acc: AccSession): Session {
 
   return {
     sessionId: acc.sessionId,
+    adapter: "claude",
     project: humanizeProjectSlug(acc.projectSlug),
     cwd: acc.cwd,
     title: acc.title,
@@ -288,6 +290,11 @@ function durationMs(first: string | null, last: string | null): number {
 
 export const claudeAdapter: Adapter = {
   name: "Claude Code",
+  slug: "claude",
+
+  dirLabel(): string {
+    return tilde(projectsDir());
+  },
 
   async isAvailable(): Promise<boolean> {
     try {

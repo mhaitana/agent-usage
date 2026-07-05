@@ -20,9 +20,10 @@ import type {
 } from "./types";
 import type { Adapter, DiscoveredSession } from "./adapters/types";
 import { claudeAdapter } from "./adapters/claude";
+import { codexAdapter } from "./adapters/codex";
 
 // Registered adapters, in the order they appear in the header banner / status.
-const ADAPTERS: Adapter[] = [claudeAdapter];
+const ADAPTERS: Adapter[] = [claudeAdapter, codexAdapter];
 
 // --- in-memory mtime cache ------------------------------------------------
 
@@ -82,10 +83,55 @@ export async function getUsageDataset(): Promise<UsageDataset> {
         }
       }
     }
-    statuses.push({ name: adapter.name, available, sessions: count });
+    statuses.push({
+      name: adapter.name,
+      slug: adapter.slug,
+      dirLabel: adapter.dirLabel(),
+      available,
+      sessions: count,
+    });
   }
 
   return buildDataset(sessions, statuses);
+}
+
+// --- scoping + per-adapter helpers ----------------------------------------
+
+/** Slugs of all registered adapters — for route validation + nav. */
+export function knownSlugs(): string[] {
+  return ADAPTERS.map((a) => a.slug);
+}
+
+/** Adapter display meta (name + slug + dirLabel) without parsing any sessions.
+ *  Cheap: used by `generateMetadata` on per-agent pages so they can resolve a
+ *  slug → name without running the full dataset fan-out. */
+export function adapterMeta(): { slug: string; name: string; dirLabel: string }[] {
+  return ADAPTERS.map((a) => ({ slug: a.slug, name: a.name, dirLabel: a.dirLabel() }));
+}
+
+/** Re-aggregate a dataset to a single adapter by filtering its sessions.
+ *  Keeps the full `adapters` status list (so nav + banner still render on
+ *  per-agent pages). Cheap: parsing is already done and cached; this is just
+ *  an in-memory re-aggregation via `buildDataset`. */
+export function scopeDataset(ds: UsageDataset, slug: string): UsageDataset {
+  const scoped = ds.sessions.filter((s) => s.adapter === slug);
+  return buildDataset(scoped, ds.adapters);
+}
+
+/** Per-adapter token + cost totals (for the overview hub cards). Computed by
+ *  grouping `ds.sessions` by `adapter`; merge with `ds.adapters` for
+ *  name / dirLabel / available / session count. */
+export function perAdapterTotals(
+  ds: UsageDataset,
+): { slug: string; totalTokens: number; cost: number }[] {
+  const map = new Map<string, { totalTokens: number; cost: number }>();
+  for (const s of ds.sessions) {
+    const e = map.get(s.adapter) ?? { totalTokens: 0, cost: 0 };
+    e.totalTokens += s.totalTokens;
+    e.cost += s.cost;
+    map.set(s.adapter, e);
+  }
+  return [...map.entries()].map(([slug, v]) => ({ slug, ...v }));
 }
 
 // --- aggregate views ------------------------------------------------------

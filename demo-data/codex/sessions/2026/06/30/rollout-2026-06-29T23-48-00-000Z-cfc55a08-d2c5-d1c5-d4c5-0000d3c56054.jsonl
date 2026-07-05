@@ -1,0 +1,35 @@
+{"type":"session_meta","timestamp":"2026-06-29T23:48:00.000Z","payload":{"id":"cfc55a08-d2c5-d1c5-d4c5-0000d3c56054","session_id":"cfc55a08-d2c5-d1c5-d4c5-0000d3c56054","timestamp":"2026-06-29T23:48:00.000Z","cwd":"/Users/demo/Projects/api","originator":"codex_cli","cli_version":"0.142.0-alpha.1","source":"cli","thread_source":"user","model_provider":"openai"}}
+{"type":"turn_context","timestamp":"2026-06-29T23:48:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-29T23:48:00.000Z","payload":{"type":"user_message","message":"turn 1","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-29T23:48:01.000Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_5aa4fc55","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-29T23:48:04.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-29T23:48:11.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":84080,"cached_input_tokens":72557,"output_tokens":372,"reasoning_output_tokens":96,"total_tokens":84452},"total_token_usage":{"input_tokens":84080,"cached_input_tokens":72557,"output_tokens":372,"reasoning_output_tokens":0,"total_tokens":84452}}}}
+{"type":"turn_context","timestamp":"2026-06-29T23:57:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-29T23:57:00.000Z","payload":{"type":"user_message","message":"turn 2","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-29T23:57:04.000Z","payload":{"type":"custom_tool_call","name":"list_dir","call_id":"call_d4a1eacc","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-29T23:57:14.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-29T23:57:18.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":53034,"cached_input_tokens":13832,"output_tokens":842,"reasoning_output_tokens":378,"total_tokens":53876},"total_token_usage":{"input_tokens":137114,"cached_input_tokens":86389,"output_tokens":1214,"reasoning_output_tokens":0,"total_tokens":138328}}}}
+{"type":"turn_context","timestamp":"2026-06-30T00:06:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-30T00:06:00.000Z","payload":{"type":"user_message","message":"turn 3","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-30T00:06:01.000Z","payload":{"type":"custom_tool_call","name":"shell","call_id":"call_66a98c67","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:06:04.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:06:12.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":121711,"cached_input_tokens":82763,"output_tokens":2039,"reasoning_output_tokens":917,"total_tokens":123750},"total_token_usage":{"input_tokens":258825,"cached_input_tokens":169152,"output_tokens":3253,"reasoning_output_tokens":0,"total_tokens":262078}}}}
+{"type":"turn_context","timestamp":"2026-06-30T00:15:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-30T00:15:00.000Z","payload":{"type":"user_message","message":"turn 4","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-30T00:15:07.000Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_60a7445e","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-30T00:15:07.000Z","payload":{"type":"custom_tool_call","name":"read_file","call_id":"call_61a745f1","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-30T00:15:03.000Z","payload":{"type":"function_call","name":"shell","call_id":"call_5ea74138","arguments":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:15:13.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:15:05.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":37669,"cached_input_tokens":0,"output_tokens":1153,"reasoning_output_tokens":259,"total_tokens":38822},"total_token_usage":{"input_tokens":296494,"cached_input_tokens":169152,"output_tokens":4406,"reasoning_output_tokens":0,"total_tokens":300900}}}}
+{"type":"turn_context","timestamp":"2026-06-30T00:24:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-30T00:24:00.000Z","payload":{"type":"user_message","message":"turn 5","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-30T00:24:05.000Z","payload":{"type":"function_call","name":"read_file","call_id":"call_629a7b91","arguments":"{}"}}
+{"type":"response_item","timestamp":"2026-06-30T00:24:07.000Z","payload":{"type":"function_call","name":"apply_patch","call_id":"call_619a79fe","arguments":"{}"}}
+{"type":"response_item","timestamp":"2026-06-30T00:24:01.000Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_609a786b","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:24:07.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:24:09.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":31657,"cached_input_tokens":18674,"output_tokens":3439,"reasoning_output_tokens":1233,"total_tokens":35096},"total_token_usage":{"input_tokens":328151,"cached_input_tokens":187826,"output_tokens":7845,"reasoning_output_tokens":0,"total_tokens":335996}}}}
+{"type":"turn_context","timestamp":"2026-06-30T00:33:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-30T00:33:00.000Z","payload":{"type":"user_message","message":"turn 6","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-30T00:33:05.000Z","payload":{"type":"custom_tool_call","name":"list_dir","call_id":"call_5c983388","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:33:12.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-30T00:33:06.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":9932,"cached_input_tokens":0,"output_tokens":2733,"reasoning_output_tokens":109,"total_tokens":12665},"total_token_usage":{"input_tokens":338083,"cached_input_tokens":187826,"output_tokens":10578,"reasoning_output_tokens":0,"total_tokens":348661}}}}

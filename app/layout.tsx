@@ -3,8 +3,39 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Claude Code Usage",
-  description: "Token usage by session, day, model, and project.",
+  // Per-page titles plug into this template (e.g. "Overview" →
+  // "Overview · Agent Usage"). The root default covers the homepage.
+  title: {
+    default: "Agent Usage",
+    template: "%s · Agent Usage",
+  },
+  description:
+    "Local-first token, cost, and session analytics for Claude Code and Codex — read live from your own session transcripts.",
+  applicationName: "Agent Usage",
+  keywords: [
+    "Claude Code",
+    "Codex",
+    "agent usage",
+    "token usage",
+    "API cost",
+    "analytics",
+    "dashboard",
+  ],
+  authors: [{ name: "Matt Haitana", url: "https://github.com/mhaitana" }],
+  openGraph: {
+    type: "website",
+    siteName: "Agent Usage",
+    title: "Agent Usage",
+    description:
+      "Local-first token, cost, and session analytics for Claude Code and Codex.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Agent Usage",
+    description:
+      "Local-first token, cost, and session analytics for Claude Code and Codex.",
+  },
+  robots: { index: true, follow: true },
 };
 
 /**

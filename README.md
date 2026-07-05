@@ -5,8 +5,9 @@ your machine and renders token, cost, session, and project analytics. No
 database, no auth, no external requests — everything runs against your own
 session transcripts.
 
-Today it reads **Claude Code** (`~/.claude/projects/*/*.jsonl`). The architecture
-is built around an **adapter seam** so that adding Codex, Antigravity, or
+Today it reads **Claude Code** (`~/.claude/projects/*/*.jsonl`) and **Codex**
+(`~/.codex/sessions/**/*.jsonl` + `~/.codex/archived_sessions/*.jsonl`). The
+architecture is built around an **adapter seam** so that adding Antigravity or
 another agent later is a new file, not a refactor — see
 [Adding a new agent](#adding-a-new-agent).
 
@@ -16,10 +17,18 @@ another agent later is a new file, not a refactor — see
 
 ## What it shows
 
-A single-page dashboard built from your agent session logs:
+A dashboard built from your agent session logs, with a scope switcher in the
+header:
+
+- **`/` — overview.** One summary card per agent (sessions, tokens, est. cost,
+  link to its page) above the combined panels across **all** agents.
+- **`/{slug}` — per-agent.** The same panels scoped to a single agent:
+  [`/claude`](http://localhost:3000/claude) (Claude Code) and
+  [`/codex`](http://localhost:3000/codex) (Codex). An unknown slug 404s.
 
 | Panel | What it renders |
 |---|---|
+| **Agent cards** *(overview only)* | One clay card per agent: session count, total tokens, est. cost, linking to its page. |
 | **KPI tiles** | Total tokens, est. cost, sessions, tool calls, cache-read tokens, active window — each with a sparkline trend. |
 | **Daily tokens** | Stacked area chart of tokens per day, split by model. Click a legend item to toggle a model on/off. |
 | **By model** | Donut of each model's share of total tokens, with a per-model share bar, token count, and API-price-equivalent cost. |
@@ -38,15 +47,17 @@ pnpm install
 pnpm dev          # http://localhost:3000
 ```
 
-That's it. The app reads `~/.claude/projects/*/*.jsonl` from your machine and
-renders the dashboard. If you've used Claude Code in this directory tree, you'll
-see data immediately.
+That's it. The app reads `~/.claude/projects/*/*.jsonl` and
+`~/.codex/sessions/**/*.jsonl` from your machine and renders the dashboard. If
+you've used Claude Code and/or Codex in this directory tree, you'll see data
+immediately.
 
 ### Prerequisites
 
 - Node.js 20+ (Node 24 is used in development)
 - pnpm 10+ (`corepack enable` if you don't have it)
-- Existing Claude Code session transcripts under `~/.claude/projects/`
+- Existing Claude Code transcripts under `~/.claude/projects/` and/or Codex
+  rollouts under `~/.codex/sessions/`
 
 ### Other commands
 
@@ -72,13 +83,16 @@ three things: **where** the tool stores sessions, **how** to parse them, and
 sessions by file mtime, and aggregates everything into one `UsageDataset`.
 
 ```
-~/.claude/projects/*/*.jsonl          (Codex → ~/.codex/sessions/…, etc.)
-        │
-        ▼
-lib/adapters/claude.ts   claudeAdapter              ← Claude-specific extraction
-   (DiscoveredSession[] → Session[])                 + Anthropic pricing
-        │
-        ▼
+~/.claude/projects/*/*.jsonl          ~/.codex/sessions/**/*.jsonl
+                                      ~/.codex/archived_sessions/*.jsonl
+        │                                  │
+        ▼                                  ▼
+lib/adapters/claude.ts   claudeAdapter   lib/adapters/codex.ts   codexAdapter
+   (DiscoveredSession[] → Session[])         (DiscoveredSession[] → Session[])
+   + Anthropic pricing                       + OpenAI pricing
+        │                                  │
+        └──────────────┬───────────────────┘
+                       ▼
 lib/usage-data.ts        getUsageDataset()           ← orchestrator
    • adapter registry (ADAPTERS)
    • in-memory mtime cache (parseWithCache)
@@ -106,11 +120,48 @@ Each Claude session is a newline-delimited JSON file. Records have a `type`:
 - Malformed lines are skipped defensively — a single bad record never breaks
   the whole session.
 
+### Codex parsing (`lib/adapters/codex.ts`)
+
+Codex stores session rollouts as JSONL under `~/.codex/sessions/YYYY/MM/DD/`
+(nested by date) and `~/.codex/archived_sessions/` (flat), plus a
+`~/.codex/session_index.jsonl` id→title index. Each rollout record has a
+top-level `type`:
+
+- **`session_meta`** supplies the `cwd` (→ project name = its basename) and the
+  session id (`payload.id`, with `payload.session_id` as a fallback on newer
+  versions).
+- **`turn_context`** carries `payload.model` for the upcoming turn (e.g.
+  `gpt-5.5`). It **precedes** that turn's `token_count` records, so each
+  token delta is attributed to the most recent model.
+- **`token_count`** (inside `event_msg`) carries `info.last_token_usage`, a
+  **per-response delta** (not the cumulative `total_token_usage`). Summing
+  deltas gives the true per-session total without double-counting.
+- **Messages** are `user_message` / `agent_message` event payloads; **tool
+  calls** are `custom_tool_call` / `function_call` response items.
+- Session **titles** are looked up from `session_index.jsonl` by session id.
+
+Codex's token taxonomy maps onto the normalized shape as: `inputTokens` =
+`input_tokens − cached_input_tokens`, `cacheReadTokens` =
+`cached_input_tokens`, `cacheCreationTokens` = 0 (Codex has no cache-creation
+field), `outputTokens` = `output_tokens` (reasoning tokens are bundled in).
+Cost uses OpenAI gpt-5 list prices (`lib/pricing/openai.ts`).
+
 ### In-memory mtime cache
 
 Each parsed session is cached keyed by `path + mtime + size`, so re-rendering
 is cheap until a session file actually changes. This is a **process-local**
 cache — there is no disk-backed state, intentionally. Don't introduce any.
+
+### Scoping to one agent (`scopeDataset`)
+
+Every normalized `Session` carries an `adapter` slug (set by its adapter's
+`toSession`). The orchestrator always parses **all** registered adapters into
+one combined `UsageDataset`; per-agent pages (`/{slug}`) then call
+`scopeDataset(ds, slug)` (`lib/usage-data.ts`), which filters `ds.sessions` by
+`adapter` and re-aggregates via the same `buildDataset` used for the overview.
+Parsing happens once (cached); scoping is a cheap in-memory re-aggregation.
+`knownSlugs()` validates the route param (unknown slugs 404), and
+`perAdapterTotals(ds)` feeds the overview hub cards.
 
 ### Daily attribution
 
@@ -120,16 +171,17 @@ touch the daily chart math.
 
 ### Cost is API-price-equivalent, not your bill
 
-`lib/pricing.ts` estimates cost from public Anthropic API list prices. Claude
-Code subscriptions (Pro / Max) are **not** pay-per-token — these numbers are a
-rough gauge of value/volume, not what you're actually charged. `rateFor()`
-resolves model ids by **exact match → prefix match → family heuristic**
-(`haiku` / `opus` / `sonnet` / `fable`). When Anthropic pricing changes, add
-new rates to `RATES`; update `DEFAULT_RATE` last.
+`lib/pricing/anthropic.ts` estimates cost from public Anthropic API list
+prices. Claude Code subscriptions (Pro / Max) are **not** pay-per-token — these
+numbers are a rough gauge of value/volume, not what you're actually charged.
+`rateFor()` resolves model ids by **exact match → prefix match → family
+heuristic** (`haiku` / `opus` / `sonnet` / `fable`). When Anthropic pricing
+changes, add new rates to `RATES`; update `DEFAULT_RATE` last.
 
-> `lib/pricing.ts` is currently Anthropic-specific. When a second vendor lands,
-> split it into `lib/pricing/{anthropic,openai,…}.ts` and have each adapter
-> import its own.
+> Each vendor lives in its own `lib/pricing/<vendor>.ts` (`anthropic.ts`,
+> `openai.ts`, …). `openai.ts` follows the same pattern with gpt-5 / gpt-5-mini
+> / gpt-5-nano / gpt-5-pro rates; Codex subscriptions aren't pay-per-token
+> either, so its numbers are the same API-price-equivalent gauge.
 
 ---
 
@@ -137,12 +189,15 @@ new rates to `RATES`; update `DEFAULT_RATE` last.
 
 ```
 app/
-  layout.tsx          root layout + no-FOUC theme boot script
-  page.tsx            the dashboard page (single page)
-  globals.css         design tokens + claymorphism × neo-brutalism styles
-  api/usage/route.ts  JSON API → UsageDataset
+  layout.tsx            root layout + no-FOUC theme boot script
+  page.tsx              overview (/) — per-agent cards + combined panels
+  [agent]/page.tsx      per-agent page (/{slug}) — panels scoped to one adapter
+  globals.css           design tokens + claymorphism × neo-brutalism styles
+  api/usage/route.ts    JSON API → UsageDataset (all agents)
 components/
-  DashboardHeader.tsx  title, live indicator, refresh, theme switcher
+  DashboardHeader.tsx  hero band, title, scope-switcher nav, refresh, theme switcher
+  AgentCards.tsx        overview hub cards (one per agent, link to its page)
+  SiteFooter.tsx        shared footer (token caveat + GitHub pill)
   KpiTiles.tsx         pastel block KPI tiles + sparklines
   DailyChart.tsx       stacked area chart by model
   ModelBreakdown.tsx   donut + per-model share bars
@@ -152,13 +207,16 @@ components/
   ui/                  Card, icons, Sparkline primitives
 lib/
   adapters/
-    types.ts        Adapter, DiscoveredSession interfaces
-    claude.ts       Claude Code adapter (JSONL, paths, slug humanizing, cost)
-  usage-data.ts     orchestrator: registry, mtime cache, aggregation
-  format.ts         display formatters (formatTokens, formatCost, …)
+    types.ts        Adapter, DiscoveredSession interfaces (slug + dirLabel)
+    claude.ts       Claude Code adapter (JSONL, paths, slug humanizing, Anthropic cost)
+    codex.ts        Codex adapter (rollout JSONL, cwd-basename projects, OpenAI cost)
+  usage-data.ts     orchestrator: registry, mtime cache, aggregation, scopeDataset
+  format.ts         display formatters (formatTokens, formatCost, tilde, …)
   palette.ts        model → color mapping (chart series)
-  pricing.ts        Anthropic API-price-equivalent cost (Claude adapter imports)
-  types.ts          shared types (UsageDataset, Session, AdapterStatus, …)
+  pricing/
+    anthropic.ts    Anthropic API-price-equivalent cost (Claude adapter imports)
+    openai.ts       OpenAI API-price-equivalent cost (Codex adapter imports)
+  types.ts          shared types (UsageDataset, Session.adapter, AdapterStatus, …)
 ```
 
 ### Components are presentational
@@ -181,23 +239,27 @@ To support a new tool (Codex, Antigravity, …):
 
 1. **Create the adapter** — `lib/adapters/<tool>.ts` implementing `Adapter`
    from `lib/adapters/types.ts`:
-   - `name` — display name ("Codex").
+   - `name` — display name ("Antigravity").
+   - `slug` — URL-safe id (`"antigravity"`); becomes the per-agent route
+     (`/antigravity`) and nav pill automatically.
    - `isAvailable()` — `stat` the tool's data dir; return false if missing.
    - `discoverSessions()` — walk the tool's data dir and return
      `DiscoveredSession[]` (`{ key, path, projectSlug }`).
    - `parseSession(d)` — read `d.path`, map the tool's raw records onto the
      normalized `Session` shape (zeros for token fields it doesn't expose),
-     compute cost via its vendor pricing.
+     set `adapter: "<slug>"` on the returned `Session`, compute cost via its
+     vendor pricing.
+   - `dirLabel()` — display path for the header subtitle (e.g. `~/.antigravity`).
 2. **Add pricing** — for a new vendor, create `lib/pricing/<vendor>.ts` with a
-   `costOf(...)` matching the Anthropic one. (When you do, rename the existing
-   `lib/pricing.ts` → `lib/pricing/anthropic.ts` for symmetry.)
+   `costOf(...)` matching the existing `anthropic.ts` / `openai.ts` ones.
 3. **Register it** — add the adapter to `ADAPTERS` in `lib/usage-data.ts`.
 4. **Env override** — if the tool's data dir is configurable, read its env var
-   inside the adapter (e.g. `CODEX_DIR`), mirroring the `CLAUDE_DIR` pattern.
+   inside the adapter (e.g. `ANTIGRAVITY_DIR`), mirroring the `CLAUDE_DIR` pattern.
 
 No other files should need to change — the orchestrator, cache, aggregation,
-and all components stay as-is. The new tool's sessions merge into the existing
-`UsageDataset` and appear across every panel.
+scoping, routes, and all components stay as-is. The new tool gets a nav pill,
+an overview hub card, and its own `/<slug>` page for free, and its sessions
+merge into the combined `UsageDataset` on the overview.
 
 ---
 
@@ -252,18 +314,19 @@ columns, KPIs, and tooltips to prevent layout shift.
 
 ## Configuration
 
-### `CLAUDE_DIR` override
+### `CLAUDE_DIR` / `CODEX_DIR` override
 
-Set `CLAUDE_DIR=/path/to/.claude` to point at an alternate Claude Code config
-directory (e.g. for testing, or a non-default install path). The Claude adapter
-reads it; it flows into every file lookup.
+Set `CLAUDE_DIR=/path/to/.claude` or `CODEX_DIR=/path/to/.codex` to point at an
+alternate config directory (e.g. for testing, or a non-default install path).
+Each adapter reads its own env var; it flows into every file lookup.
 
 ```bash
 CLAUDE_DIR=/tmp/fake-claude pnpm dev
+CODEX_DIR=/tmp/fake-codex pnpm dev
 ```
 
-Each adapter owns its own env override (this is the pattern a future `CODEX_DIR`
-or `ANTIGRAVITY_DIR` would follow).
+Each adapter owns its own env override (this is the pattern a future
+`ANTIGRAVITY_DIR` would follow).
 
 ### No other configuration
 
@@ -273,13 +336,18 @@ the session transcripts under your agents' data directories.
 ## Demo deployment (Vercel)
 
 The dashboard reads from the filesystem, so a real deploy shows your own data
-only if you point `CLAUDE_DIR` at a directory present on the host. For a public
-**demo deploy** (e.g. on Vercel), sample transcripts are committed under
-`demo-data/projects/*/*.jsonl` and regenerated by:
+only if you point `CLAUDE_DIR` / `CODEX_DIR` at directories present on the host.
+For a public **demo deploy** (e.g. on Vercel), sample transcripts are committed
+under `demo-data/` and regenerated by:
 
 ```bash
-node scripts/generate-fake-data.mjs    # writes ~40 fake sessions over 30 days
+node scripts/generate-fake-data.mjs    # writes ~40 Claude sessions + ~25 Codex rollouts over 30 days
 ```
+
+This produces two parallel trees that match the adapters' on-disk shapes:
+
+- `demo-data/projects/<slug>/<id>.jsonl` — fake Claude Code sessions
+- `demo-data/codex/sessions/YYYY/MM/DD/rollout-*.jsonl` + `demo-data/codex/session_index.jsonl` — fake Codex rollouts
 
 To deploy the demo on Vercel:
 
@@ -287,14 +355,18 @@ To deploy the demo on Vercel:
    `outputFileTracingIncludes` ensure the JSONL ships in the serverless bundle —
    Next's file tracer can't see files read via `readdir` at runtime, so they're
    included explicitly).
-2. Set the env var **`CLAUDE_DIR=./demo-data`** in the Vercel project settings
-   (resolved against the project root, which is the runtime cwd).
-3. Deploy. The dashboard renders the fake data across every panel.
+2. Set these env vars in the Vercel project settings (resolved against the
+   project root, which is the runtime cwd):
+   - **`CLAUDE_DIR=./demo-data`** (→ `./demo-data/projects`)
+   - **`CODEX_DIR=./demo-data/codex`** (→ `./demo-data/codex/sessions` + index)
+3. Deploy. The dashboard renders the fake data across every panel — the
+   overview shows both agents' cards plus combined panels, and `/claude` and
+   `/codex` show each agent scoped.
 
-For a deploy backed by your **real** Claude Code data, copy your
-`~/.claude/projects/` tree into the repo (or a private sibling) and point
-`CLAUDE_DIR` at it the same way — but note that exposes your real usage
-transcripts to anyone who can read the deploy.
+For a deploy backed by your **real** data, copy your `~/.claude/projects/` and
+`~/.codex/` trees into the repo (or a private sibling) and point the env vars
+at them the same way — but note that exposes your real usage transcripts to
+anyone who can read the deploy.
 
 ---
 

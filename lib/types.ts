@@ -18,6 +18,9 @@ export interface ModelTokens {
 /** One row in the sessions table. */
 export interface Session {
   sessionId: string;
+  /** Source adapter slug (e.g. "claude", "codex") — used to scope a dataset
+   *  to one agent. */
+  adapter: string;
   /** Humanized project name, derived from the parent directory slug. */
   project: string;
   /** Raw cwd recorded in the session, if any. */
@@ -95,6 +98,10 @@ export interface Totals {
 export interface AdapterStatus {
   /** Display name, e.g. "Claude Code". */
   name: string;
+  /** URL-safe slug, e.g. "claude" — used for per-agent routes + nav. */
+  slug: string;
+  /** Display path, e.g. "~/.claude/projects" — for the header subtitle. */
+  dirLabel: string;
   /** Whether the tool's data directory was present on this machine. */
   available: boolean;
   /** Number of sessions parsed from this adapter this run. */

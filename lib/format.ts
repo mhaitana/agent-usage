@@ -37,3 +37,16 @@ export function formatDate(iso: string | null): string {
     minute: "2-digit",
   });
 }
+
+/** Replace a leading $HOME segment with `~` for display; leaves other paths
+ *  (e.g. relative `./demo-data/projects` from an env override) unchanged. */
+export function tilde(path: string): string {
+  const home =
+    typeof process !== "undefined" && process.env && process.env.HOME
+      ? process.env.HOME
+      : "";
+  if (home && (path === home || path.startsWith(home + "/"))) {
+    return "~" + path.slice(home.length);
+  }
+  return path;
+}

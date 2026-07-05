@@ -1,28 +1,41 @@
-// Generate realistic fake Claude Code session transcripts for demo deploys
-// (e.g. Vercel). Writes JSONL files under <root>/demo-data/projects/<slug>/
-// matching the on-disk shape the Claude adapter reads. Run:
+// Generate realistic fake coding-agent session transcripts for demo deploys
+// (e.g. Vercel). Writes:
+//   - Claude Code sessions  → demo-data/projects/<slug>/<id>.jsonl
+//   - Codex rollouts        → demo-data/codex/sessions/YYYY/MM/DD/rollout-*.jsonl
+//     plus demo-data/codex/session_index.jsonl (id → thread_name index)
+//
+// Both match the on-disk shapes the adapters read. Run:
 //
 //   node scripts/generate-fake-data.mjs
 //
-// Then deploy with CLAUDE_DIR=./demo-data (relative to the project root, which
-// is the runtime cwd on Vercel). Re-run any time to regenerate / expand.
+// Then deploy with:
+//   CLAUDE_DIR=./demo-data            (→ ./demo-data/projects)
+//   CODEX_DIR=./demo-data/codex       (→ ./demo-data/codex/sessions + index)
+//
+// (relative to the project root, which is the runtime cwd on Vercel). Re-run
+// any time to regenerate / expand.
 //
 // This is a one-off local generator, so Math.random / new Date() are fine here
 // (they are forbidden inside the workflow runtime, not in scripts).
 
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "demo-data");
+const CODEX_OUT = join(OUT, "codex");
 
-const MODELS = [
+const CLAUDE_MODELS = [
   "claude-sonnet-5",
   "claude-opus-4-8",
   "claude-haiku-4-5",
   "claude-sonnet-4-5",
 ];
 
+const CODEX_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5-mini"];
+
+// Shared project set — same cwds for both tools so the overview's by-project
+// view shows them merged (one person, two tools, same repos).
 const PROJECTS = [
   { slug: "-Users-demo-Projects-webapp", cwd: "/Users/demo/Projects/webapp", titlePrefix: "webapp" },
   { slug: "-Users-demo-Projects-api", cwd: "/Users/demo/Projects/api", titlePrefix: "api" },
@@ -40,7 +53,8 @@ const TITLE_FRAGMENTS = [
   "add empty states", "tune kpi sparkline", "add session search",
 ];
 
-const TOOL_NAMES = ["Read", "Edit", "Write", "Bash", "Grep", "Glob", "TodoWrite"];
+const CLAUDE_TOOLS = ["Read", "Edit", "Write", "Bash", "Grep", "Glob", "TodoWrite"];
+const CODEX_TOOLS = ["shell", "apply_patch", "read_file", "grep", "list_dir"];
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -56,7 +70,22 @@ function idFrom(seed) {
   return (h >>> 0).toString(16).padStart(8, "0");
 }
 
-function makeSession({ project, dayOffset, idx }) {
+// UUID-ish string (deterministic from seed) — Codex session ids look like
+// 019f2568-b495-7970-b960-5e58b4944564.
+function uuidFrom(seed) {
+  const a = idFrom(seed + "a");
+  const b = idFrom(seed + "b").slice(0, 4);
+  const c = idFrom(seed + "c").slice(0, 4);
+  const d = idFrom(seed + "d").slice(0, 4);
+  const e = idFrom(seed + "e").padStart(12, "0");
+  return `${a}-${b}-${c}-${d}-${e}`;
+}
+
+// ---------------------------------------------------------------------------
+// Claude Code
+// ---------------------------------------------------------------------------
+
+function makeClaudeSession({ project, dayOffset, idx }) {
   const sessionId = idFrom(`${project.slug}-${dayOffset}-${idx}`) + "-fake-0000-0000-000000000000";
   const start = new Date();
   start.setDate(start.getDate() - dayOffset);
@@ -79,12 +108,11 @@ function makeSession({ project, dayOffset, idx }) {
 
   // alternate user / assistant turns; one model per session (mostly), with
   // occasional model switches for variety in the by-model breakdown.
-  const primaryModel = pick(MODELS);
+  const primaryModel = pick(CLAUDE_MODELS);
   const turns = rand(6, 28);
-  let cursor = new Date(start.getTime());
   const stepMs = (end.getTime() - start.getTime()) / turns;
   for (let t = 0; t < turns; t++) {
-    cursor = new Date(start.getTime() + stepMs * t);
+    const cursor = new Date(start.getTime() + stepMs * t);
     // user turn
     lines.push({
       type: "user",
@@ -94,7 +122,7 @@ function makeSession({ project, dayOffset, idx }) {
       message: { role: "user", content: [{ type: "text", text: `turn ${t + 1}` }] },
     });
     // assistant turn
-    const model = Math.random() < 0.85 ? primaryModel : pick(MODELS);
+    const model = Math.random() < 0.85 ? primaryModel : pick(CLAUDE_MODELS);
     const isBigModel = model.includes("opus");
     const inputTokens = rand(isBigModel ? 20_000 : 4_000, isBigModel ? 180_000 : 40_000);
     const cacheReadTokens = Math.random() < 0.6 ? rand(5_000, 120_000) : 0;
@@ -103,7 +131,7 @@ function makeSession({ project, dayOffset, idx }) {
     const toolUseCount = rand(0, 4);
     const content = [{ type: "text", text: "ok" }];
     for (let u = 0; u < toolUseCount; u++) {
-      content.push({ type: "tool_use", id: `toolu_${idFrom(sessionId + t + u)}`, name: pick(TOOL_NAMES), input: {} });
+      content.push({ type: "tool_use", id: `toolu_${idFrom(sessionId + t + u)}`, name: pick(CLAUDE_TOOLS), input: {} });
     }
     lines.push({
       type: "assistant",
@@ -127,23 +155,177 @@ function makeSession({ project, dayOffset, idx }) {
   return { sessionId, slug: project.slug, lines };
 }
 
+// ---------------------------------------------------------------------------
+// Codex
+// ---------------------------------------------------------------------------
+
+function makeCodexSession({ project, dayOffset, idx }) {
+  const sessionId = uuidFrom(`codex-${project.slug}-${dayOffset}-${idx}`);
+  const start = new Date();
+  start.setDate(start.getDate() - dayOffset);
+  start.setHours(rand(8, 22), rand(0, 59), 0, 0);
+  const durationMin = rand(5, 120);
+  const end = new Date(start.getTime() + durationMin * 60_000);
+
+  const title = `${project.titlePrefix}: ${pick(TITLE_FRAGMENTS)}`;
+  const cwd = project.cwd;
+  const lines = [];
+
+  // session_meta — newer Codex emits both `id` and `session_id`.
+  lines.push({
+    type: "session_meta",
+    timestamp: isoDate(start),
+    payload: {
+      id: sessionId,
+      session_id: sessionId,
+      timestamp: isoDate(start),
+      cwd,
+      originator: "codex_cli",
+      cli_version: "0.142.0-alpha.1",
+      source: "cli",
+      thread_source: "user",
+      model_provider: "openai",
+    },
+  });
+
+  const primaryModel = pick(CODEX_MODELS);
+  const turns = rand(4, 18);
+  const stepMs = (end.getTime() - start.getTime()) / turns;
+
+  // Cumulative totals for realism (the adapter only reads last_token_usage).
+  let cumIn = 0, cumCached = 0, cumOut = 0;
+
+  for (let t = 0; t < turns; t++) {
+    const ts = new Date(start.getTime() + stepMs * t);
+    const model = Math.random() < 0.85 ? primaryModel : pick(CODEX_MODELS);
+
+    // turn_context precedes this turn's token_count — the adapter attributes
+    // the upcoming token delta to this model.
+    lines.push({
+      type: "turn_context",
+      timestamp: isoDate(ts),
+      payload: { model, input_history: [], tools: [] },
+    });
+
+    // user message
+    lines.push({
+      type: "event_msg",
+      timestamp: isoDate(ts),
+      payload: { type: "user_message", message: `turn ${t + 1}`, role: "user" },
+    });
+
+    // tool calls (response_item)
+    const toolCount = rand(0, 3);
+    for (let u = 0; u < toolCount; u++) {
+      const isFn = Math.random() < 0.3;
+      lines.push({
+        type: "response_item",
+        timestamp: isoDate(new Date(ts.getTime() + rand(1, 8) * 1000)),
+        payload: isFn
+          ? { type: "function_call", name: pick(CODEX_TOOLS), call_id: `call_${idFrom(sessionId + t + u)}`, arguments: "{}" }
+          : { type: "custom_tool_call", name: pick(CODEX_TOOLS), call_id: `call_${idFrom(sessionId + t + u)}`, args: "{}" },
+      });
+    }
+
+    // agent message
+    lines.push({
+      type: "event_msg",
+      timestamp: isoDate(new Date(ts.getTime() + rand(2, 15) * 1000)),
+      payload: { type: "agent_message", message: "ok" },
+    });
+
+    // token_count — last_token_usage is a per-response DELTA; total_token_usage
+    // is cumulative. input_tokens includes cached_input_tokens.
+    const cached = Math.random() < 0.7 ? rand(5_000, 120_000) : 0;
+    const nonCached = rand(2_000, 40_000);
+    const inputTokens = nonCached + cached;
+    const outputTokens = rand(200, 4_000);
+    const reasoning = rand(0, Math.floor(outputTokens * 0.6));
+    cumIn += inputTokens;
+    cumCached += cached;
+    cumOut += outputTokens;
+    lines.push({
+      type: "event_msg",
+      timestamp: isoDate(new Date(ts.getTime() + rand(3, 20) * 1000)),
+      payload: {
+        type: "token_count",
+        info: {
+          last_token_usage: {
+            input_tokens: inputTokens,
+            cached_input_tokens: cached,
+            output_tokens: outputTokens,
+            reasoning_output_tokens: reasoning,
+            total_tokens: inputTokens + outputTokens,
+          },
+          total_token_usage: {
+            input_tokens: cumIn,
+            cached_input_tokens: cumCached,
+            output_tokens: cumOut,
+            reasoning_output_tokens: 0,
+            total_tokens: cumIn + cumOut,
+          },
+        },
+      },
+    });
+  }
+
+  return { sessionId, title, cwd, start, end, lines };
+}
+
+// ---------------------------------------------------------------------------
+
 async function main() {
   await rm(OUT, { recursive: true, force: true });
-  let count = 0;
+  let claudeCount = 0;
+  let codexCount = 0;
+  const codexIndex = [];
+
   for (const project of PROJECTS) {
-    const sessionsPerProject = rand(6, 12);
-    for (let i = 0; i < sessionsPerProject; i++) {
-      const dayOffset = rand(0, 29); // last 30 days
-      const { sessionId, slug, lines } = makeSession({ project, dayOffset, idx: i });
+    // Claude
+    const claudePer = rand(6, 12);
+    for (let i = 0; i < claudePer; i++) {
+      const dayOffset = rand(0, 29);
+      const { sessionId, slug, lines } = makeClaudeSession({ project, dayOffset, idx: i });
       const dir = join(OUT, "projects", slug);
       await mkdir(dir, { recursive: true });
       const file = join(dir, `${sessionId}.jsonl`);
       const body = lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
       await writeFile(file, body, "utf8");
-      count++;
+      claudeCount++;
+    }
+
+    // Codex
+    const codexPer = rand(3, 7);
+    for (let i = 0; i < codexPer; i++) {
+      const dayOffset = rand(0, 29);
+      const s = makeCodexSession({ project, dayOffset, idx: i });
+      const d = s.start;
+      const dir = join(
+        CODEX_OUT,
+        "sessions",
+        String(d.getFullYear()),
+        String(d.getMonth() + 1).padStart(2, "0"),
+        String(d.getDate()).padStart(2, "0"),
+      );
+      await mkdir(dir, { recursive: true });
+      const stamp = isoDate(d).replace(/[:.]/g, "-");
+      const file = join(dir, `rollout-${stamp}-${s.sessionId}.jsonl`);
+      const body = s.lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
+      await writeFile(file, body, "utf8");
+      codexIndex.push({ id: s.sessionId, thread_name: s.title, updated_at: isoDate(s.end) });
+      codexCount++;
     }
   }
-  console.log(`Wrote ${count} fake sessions to ${OUT}`);
+
+  // Codex title index
+  const indexDir = dirname(join(CODEX_OUT, "session_index.jsonl"));
+  await mkdir(indexDir, { recursive: true });
+  const indexBody = codexIndex.map((e) => JSON.stringify(e)).join("\n") + "\n";
+  await writeFile(join(CODEX_OUT, "session_index.jsonl"), indexBody, "utf8");
+
+  console.log(
+    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")} and ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}`,
+  );
 }
 
 await main();

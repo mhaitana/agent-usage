@@ -29,10 +29,15 @@ export interface DiscoveredSession {
  */
 export interface Adapter {
   readonly name: string;
+  /** URL-safe id used for per-agent routes + nav (e.g. "claude", "codex"). */
+  readonly slug: string;
   /** Whether this tool's data directory exists on this machine. */
   isAvailable(): Promise<boolean>;
   /** Enumerate this tool's session files. */
   discoverSessions(): Promise<DiscoveredSession[]>;
   /** Parse one discovered session into a normalized Session (null if empty/invalid). */
   parseSession(discovered: DiscoveredSession): Promise<Session | null>;
+  /** Display path for the header subtitle (e.g. "~/.claude/projects"), with
+   *  any env override applied. */
+  dirLabel(): string;
 }
