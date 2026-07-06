@@ -1,0 +1,49 @@
+{"type":"session_meta","timestamp":"2026-06-08T06:22:00.000Z","payload":{"id":"075cc5f6-065c-055c-0c5c-00000b5ccc42","session_id":"075cc5f6-065c-055c-0c5c-00000b5ccc42","timestamp":"2026-06-08T06:22:00.000Z","cwd":"/Users/demo/Projects/api","originator":"codex_cli","cli_version":"0.142.0-alpha.1","source":"cli","thread_source":"user","model_provider":"openai"}}
+{"type":"turn_context","timestamp":"2026-06-08T06:22:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:22:00.000Z","payload":{"type":"user_message","message":"turn 1","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:22:05.000Z","payload":{"type":"custom_tool_call","name":"list_dir","call_id":"call_df0fbae0","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-08T06:22:05.000Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_e00fbc73","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:22:13.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:22:14.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":69536,"cached_input_tokens":61036,"output_tokens":2093,"reasoning_output_tokens":1102,"total_tokens":71629},"total_token_usage":{"input_tokens":69536,"cached_input_tokens":61036,"output_tokens":2093,"reasoning_output_tokens":0,"total_tokens":71629}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:25:53.333Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:25:53.333Z","payload":{"type":"user_message","message":"turn 2","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:25:55.333Z","payload":{"type":"function_call","name":"read_file","call_id":"call_e51202e9","arguments":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:25:59.333Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:25:59.333Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":103319,"cached_input_tokens":73410,"output_tokens":1787,"reasoning_output_tokens":374,"total_tokens":105106},"total_token_usage":{"input_tokens":172855,"cached_input_tokens":134446,"output_tokens":3880,"reasoning_output_tokens":0,"total_tokens":176735}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:29:46.666Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:29:46.666Z","payload":{"type":"user_message","message":"turn 3","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:29:48.666Z","payload":{"type":"custom_tool_call","name":"apply_patch","call_id":"call_eb144af2","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:29:56.666Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:29:51.666Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":97367,"cached_input_tokens":63056,"output_tokens":1444,"reasoning_output_tokens":434,"total_tokens":98811},"total_token_usage":{"input_tokens":270222,"cached_input_tokens":197502,"output_tokens":5324,"reasoning_output_tokens":0,"total_tokens":275546}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:33:40.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:33:40.000Z","payload":{"type":"user_message","message":"turn 4","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:33:41.000Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_71175c7b","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-08T06:33:48.000Z","payload":{"type":"custom_tool_call","name":"apply_patch","call_id":"call_70175ae8","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:33:52.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:33:54.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":98327,"cached_input_tokens":73014,"output_tokens":413,"reasoning_output_tokens":131,"total_tokens":98740},"total_token_usage":{"input_tokens":368549,"cached_input_tokens":270516,"output_tokens":5737,"reasoning_output_tokens":0,"total_tokens":374286}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:37:33.333Z","payload":{"model":"gpt-5.4","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:37:33.333Z","payload":{"type":"user_message","message":"turn 5","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:37:40.333Z","payload":{"type":"custom_tool_call","name":"list_dir","call_id":"call_7719a484","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-08T06:37:37.333Z","payload":{"type":"custom_tool_call","name":"list_dir","call_id":"call_7819a617","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:37:44.333Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:37:42.333Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":30453,"cached_input_tokens":0,"output_tokens":2392,"reasoning_output_tokens":327,"total_tokens":32845},"total_token_usage":{"input_tokens":399002,"cached_input_tokens":270516,"output_tokens":8129,"reasoning_output_tokens":0,"total_tokens":407131}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:41:26.666Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:41:26.666Z","payload":{"type":"user_message","message":"turn 6","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:41:33.666Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_7d1bec8d","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-08T06:41:34.666Z","payload":{"type":"custom_tool_call","name":"shell","call_id":"call_7c1beafa","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:41:37.666Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:41:29.666Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":130217,"cached_input_tokens":99338,"output_tokens":1847,"reasoning_output_tokens":948,"total_tokens":132064},"total_token_usage":{"input_tokens":529219,"cached_input_tokens":369854,"output_tokens":9976,"reasoning_output_tokens":0,"total_tokens":539195}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:45:20.000Z","payload":{"model":"gpt-5.4","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:45:20.000Z","payload":{"type":"user_message","message":"turn 7","role":"user"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:45:24.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:45:23.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":68049,"cached_input_tokens":38633,"output_tokens":2917,"reasoning_output_tokens":844,"total_tokens":70966},"total_token_usage":{"input_tokens":597268,"cached_input_tokens":408487,"output_tokens":12893,"reasoning_output_tokens":0,"total_tokens":610161}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:49:13.333Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:49:13.333Z","payload":{"type":"user_message","message":"turn 8","role":"user"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:49:24.333Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:49:18.333Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":11525,"cached_input_tokens":0,"output_tokens":1378,"reasoning_output_tokens":797,"total_tokens":12903},"total_token_usage":{"input_tokens":608793,"cached_input_tokens":408487,"output_tokens":14271,"reasoning_output_tokens":0,"total_tokens":623064}}}}
+{"type":"turn_context","timestamp":"2026-06-08T06:53:06.666Z","payload":{"model":"gpt-5.5","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-06-08T06:53:06.666Z","payload":{"type":"user_message","message":"turn 9","role":"user"}}
+{"type":"response_item","timestamp":"2026-06-08T06:53:12.666Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_ef235bc8","args":"{}"}}
+{"type":"response_item","timestamp":"2026-06-08T06:53:09.666Z","payload":{"type":"custom_tool_call","name":"grep","call_id":"call_f0235d5b","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:53:12.666Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-06-08T06:53:10.666Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":95066,"cached_input_tokens":56824,"output_tokens":3785,"reasoning_output_tokens":1298,"total_tokens":98851},"total_token_usage":{"input_tokens":703859,"cached_input_tokens":465311,"output_tokens":18056,"reasoning_output_tokens":0,"total_tokens":721915}}}}

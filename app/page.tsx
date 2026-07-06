@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Overview · Agent Usage",
   description:
-    "Combined token, cost, and session usage across all coding agents — Claude Code, Codex, and Antigravity.",
+    "Combined token, cost, and session usage across all coding agents — Claude Code, Codex, OpenCode, and Antigravity.",
 };
 
 export default async function Home() {

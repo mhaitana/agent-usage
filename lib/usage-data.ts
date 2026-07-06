@@ -21,10 +21,47 @@ import type {
 import type { Adapter, DiscoveredSession } from "./adapters/types";
 import { claudeAdapter } from "./adapters/claude";
 import { codexAdapter } from "./adapters/codex";
+import { opencodeAdapter } from "./adapters/opencode";
 import { antigravityAdapter } from "./adapters/antigravity";
 
 // Registered adapters, in the order they appear in the header banner / status.
-const ADAPTERS: Adapter[] = [claudeAdapter, codexAdapter, antigravityAdapter];
+// Token-bearing adapters first, then the activity-only Antigravity adapter last.
+const ADAPTERS: Adapter[] = [
+  claudeAdapter,
+  codexAdapter,
+  opencodeAdapter,
+  antigravityAdapter,
+];
+
+// --- enable/disable via env -----------------------------------------------
+//
+// Each adapter can be turned off with `<SLUG>_ENABLED=0|false|no|off` (slug
+// uppercased: CLAUDE_ENABLED, CODEX_ENABLED, OPENCODE_ENABLED,
+// ANTIGRAVITY_ENABLED). Unset → enabled. A disabled adapter drops out
+// completely: no hub card, no nav pill, no per-agent route (it 404s), and no
+// contribution to the combined totals — distinct from `isAvailable()` (data dir
+// missing → muted "Not found" card). The env var name is derived from the
+// adapter's slug, mirroring the per-agent `<SLUG>_DIR` data-path override.
+//
+// Unlike the `_DIR` overrides (which each adapter reads internally because the
+// target path differs per tool), the enable flag has a uniform naming
+// convention, so it's resolved here in the orchestrator rather than on each
+// Adapter — one place, no per-adapter boilerplate.
+
+const DISABLED_TOKENS = new Set(["0", "false", "no", "off"]);
+
+/** Whether an adapter is enabled by env. Unset → enabled; explicit
+ *  `0|false|no|off` (case-insensitive) → disabled. */
+function isEnabled(adapter: Adapter): boolean {
+  const raw = process.env[`${adapter.slug.toUpperCase()}_ENABLED`];
+  if (raw === undefined) return true;
+  return !DISABLED_TOKENS.has(raw.trim().toLowerCase());
+}
+
+/** Adapters that are both registered and env-enabled, in display order. */
+function registeredAdapters(): Adapter[] {
+  return ADAPTERS.filter(isEnabled);
+}
 
 // --- in-memory mtime cache ------------------------------------------------
 
@@ -71,7 +108,7 @@ export async function getUsageDataset(): Promise<UsageDataset> {
   const sessions: Session[] = [];
   const statuses: AdapterStatus[] = [];
 
-  for (const adapter of ADAPTERS) {
+  for (const adapter of registeredAdapters()) {
     const available = await adapter.isAvailable();
     let count = 0;
     if (available) {
@@ -99,9 +136,10 @@ export async function getUsageDataset(): Promise<UsageDataset> {
 
 // --- scoping + per-adapter helpers ----------------------------------------
 
-/** Slugs of all registered adapters — for route validation + nav. */
+/** Slugs of all registered + env-enabled adapters — for route validation + nav.
+ *  A disabled adapter's slug is absent, so its `/<slug>` route 404s. */
 export function knownSlugs(): string[] {
-  return ADAPTERS.map((a) => a.slug);
+  return registeredAdapters().map((a) => a.slug);
 }
 
 /** Adapter display meta (name + slug + dirLabel) without parsing any sessions.
@@ -113,7 +151,7 @@ export function adapterMeta(): {
   dirLabel: string;
   hasTokenData: boolean;
 }[] {
-  return ADAPTERS.map((a) => ({
+  return registeredAdapters().map((a) => ({
     slug: a.slug,
     name: a.name,
     dirLabel: a.dirLabel(),

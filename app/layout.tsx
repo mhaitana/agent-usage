@@ -10,11 +10,13 @@ export const metadata: Metadata = {
     template: "%s · Agent Usage",
   },
   description:
-    "Local-first token, cost, and session analytics for Claude Code and Codex — read live from your own session transcripts.",
+    "Local-first token, cost, and session analytics for Claude Code, Codex, OpenCode, and Antigravity — read live from your own session transcripts.",
   applicationName: "Agent Usage",
   keywords: [
     "Claude Code",
     "Codex",
+    "OpenCode",
+    "Antigravity",
     "agent usage",
     "token usage",
     "API cost",
@@ -27,13 +29,13 @@ export const metadata: Metadata = {
     siteName: "Agent Usage",
     title: "Agent Usage",
     description:
-      "Local-first token, cost, and session analytics for Claude Code and Codex.",
+      "Local-first token, cost, and session analytics for Claude Code, Codex, OpenCode, and Antigravity.",
   },
   twitter: {
     card: "summary",
     title: "Agent Usage",
     description:
-      "Local-first token, cost, and session analytics for Claude Code and Codex.",
+      "Local-first token, cost, and session analytics for Claude Code, Codex, OpenCode, and Antigravity.",
   },
   robots: { index: true, follow: true },
 };

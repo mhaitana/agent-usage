@@ -1,12 +1,14 @@
 # Agent Usage Dashboard
 
 A local-only Next.js dashboard that reads **coding-agent usage data live** from
-your machine and renders token, cost, session, and project analytics. No
-database, no auth, no external requests — everything runs against your own
-session transcripts.
+your machine and renders token, cost, session, and project analytics. No auth,
+no external requests — everything runs against your own session transcripts.
+(The app writes no database of its own; the OpenCode adapter *reads* an external
+SQLite db that OpenCode maintains.)
 
 Today it reads **Claude Code** (`~/.claude/projects/*/*.jsonl`), **Codex**
-(`~/.codex/sessions/**/*.jsonl` + `~/.codex/archived_sessions/*.jsonl`), and
+(`~/.codex/sessions/**/*.jsonl` + `~/.codex/archived_sessions/*.jsonl`),
+**OpenCode** (`~/.local/share/opencode/opencode.db` — SQLite), and
 **Antigravity** (`~/.gemini/antigravity-ide/brain/<uuid>/.system_generated/logs/transcript*.jsonl`).
 The architecture is built around an **adapter seam** so that adding another
 agent later is a new file, not a refactor — see
@@ -17,9 +19,18 @@ agent later is a new file, not a refactor — see
 > honestly reports `0` tokens / `$0` cost and the UI shows **activity panels**
 > (sessions, messages, tool calls, models, projects) on `/antigravity` instead
 > of the token/cost panels. The combined token/cost KPIs, daily chart, and
-> model donut on the overview stay Claude + Codex only — Antigravity still
-> contributes to the Sessions and Tool-calls totals and appears in the
+> model donut on the overview cover Claude + Codex + OpenCode — Antigravity
+> still contributes to the Sessions and Tool-calls totals and appears in the
 > sessions table and project breakdown.
+>
+> **OpenCode is token-bearing but multi-vendor.** It persists per-session token
+> counts to its SQLite db, but its `cost` column is `0` whenever a model is
+> served through a proxy OpenCode has no price table for (e.g. an OLLAMA
+> gateway fronting `glm-5.2` or `kimi-k2.7-code`). The adapter recomputes cost
+> from tokens using a comprehensive multi-vendor rate table — Anthropic, OpenAI
+> (gpt-4.1 / gpt-4o / gpt-5), Google Gemini, Zhipu GLM, Moonshot Kimi, DeepSeek,
+> Qwen, and Mistral — and falls back to an honest `$0` for unknown models
+> rather than fabricating a price.
 
 ![Stack](https://img.shields.io/badge/Next.js-16.2-black) ![React](https://img.shields.io/badge/React-19-149eca) ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38bdf8) ![Recharts](https://img.shields.io/badge/Recharts-3-22c55e)
 
@@ -35,7 +46,8 @@ header:
   agents) above the combined panels across **all** agents.
 - **`/{slug}` — per-agent.** The same panels scoped to a single agent:
   [`/claude`](http://localhost:3000/claude) (Claude Code),
-  [`/codex`](http://localhost:3000/codex) (Codex), and
+  [`/codex`](http://localhost:3000/codex) (Codex),
+  [`/opencode`](http://localhost:3000/opencode) (OpenCode), and
   [`/antigravity`](http://localhost:3000/antigravity) (Antigravity — activity
   panels). An unknown slug 404s.
 
@@ -61,17 +73,18 @@ pnpm dev          # http://localhost:3000
 ```
 
 That's it. The app reads `~/.claude/projects/*/*.jsonl`,
-`~/.codex/sessions/**/*.jsonl`, and
+`~/.codex/sessions/**/*.jsonl`, `~/.local/share/opencode/opencode.db`, and
 `~/.gemini/antigravity-ide/brain/<uuid>/.system_generated/logs/transcript*.jsonl`
 from your machine and renders the dashboard. If you've used Claude Code, Codex,
-and/or Antigravity in this directory tree, you'll see data immediately.
+OpenCode, and/or Antigravity in this directory tree, you'll see data immediately.
 
 ### Prerequisites
 
 - Node.js 20+ (Node 24 is used in development)
 - pnpm 10+ (`corepack enable` if you don't have it)
 - Existing transcripts under `~/.claude/projects/` and/or
-  `~/.codex/sessions/` and/or `~/.gemini/antigravity-ide/brain/`
+  `~/.codex/sessions/` and/or `~/.local/share/opencode/opencode.db` and/or
+  `~/.gemini/antigravity-ide/brain/`
 
 ### Other commands
 
@@ -99,11 +112,13 @@ sessions by file mtime, and aggregates everything into one `UsageDataset`.
 ```
 ~/.claude/projects/*/*.jsonl          ~/.codex/sessions/**/*.jsonl
                                       ~/.codex/archived_sessions/*.jsonl
+~/.local/share/opencode/opencode.db   ~/.gemini/antigravity-ide/brain/<uuid>/.../*.jsonl
+   (SQLite, WAL)                       (activity-only transcripts)
         │                                  │
         ▼                                  ▼
-lib/adapters/claude.ts   claudeAdapter   lib/adapters/codex.ts   codexAdapter
-   (DiscoveredSession[] → Session[])         (DiscoveredSession[] → Session[])
-   + Anthropic pricing                       + OpenAI pricing
+lib/adapters/claude.ts    lib/adapters/codex.ts    lib/adapters/opencode.ts    lib/adapters/antigravity.ts
+   (DiscoveredSession[] → Session[])              (DiscoveredSession[] → Session[])
+   + Anthropic pricing   + OpenAI pricing  + multi-vendor pricing   + no tokens (hasTokenData:false)
         │                                  │
         └──────────────┬───────────────────┘
                        ▼
@@ -159,6 +174,54 @@ Codex's token taxonomy maps onto the normalized shape as: `inputTokens` =
 `cached_input_tokens`, `cacheCreationTokens` = 0 (Codex has no cache-creation
 field), `outputTokens` = `output_tokens` (reasoning tokens are bundled in).
 Cost uses OpenAI gpt-5 list prices (`lib/pricing/openai.ts`).
+
+### OpenCode parsing (`lib/adapters/opencode.ts`) — SQLite, token-bearing
+
+Unlike the other adapters, OpenCode stores sessions in a **SQLite database** at
+`~/.local/share/opencode/opencode.db` (WAL mode; overridable via `OPENCODE_DIR`),
+not JSONL. The adapter opens it **read-only** with `better-sqlite3` so a live
+OpenCode process can keep writing (SQLite WAL allows concurrent readonly
+readers). The `session` table already carries per-session aggregates, so one
+`SELECT` per session is all that's needed:
+
+- **Tokens** come straight from the `session` row: `tokens_input`,
+  `tokens_output`, `tokens_reasoning`, `tokens_cache_read`,
+  `tokens_cache_write`. Mapping: `inputTokens = tokens_input`,
+  `cacheReadTokens = tokens_cache_read`, `cacheCreationTokens = tokens_cache_write`,
+  `outputTokens = tokens_output + tokens_reasoning` (reasoning bundled in,
+  matching Codex), `totalTokens` = their sum.
+- **Model** is a JSON column `{ id, providerID, variant }` — the `id` is the
+  model name (e.g. `claude-sonnet-5`, `gpt-4.1`, `glm-5.2`). An empty/missing
+  column falls back to `"opencode"`. A session's totals attribute to its single
+  primary model (the `session` table is an aggregate; mid-session model switches
+  can't be split from it).
+- **Project** = the basename of the `directory` column (the cwd OpenCode
+  recorded — same approach as Codex).
+- **Message + tool-call counts** come from `count(*)` subqueries on the
+  `message` and `part` tables (`part.data` JSON `type === "tool"`).
+- **Timestamps** are ms epochs (`time_created` / `time_updated`) → ISO.
+- **Subagents** (`parent_id`) are included flat in V1.
+
+**Cost is multi-vendor** (`lib/pricing/opencode.ts`): OpenCode routes through
+any provider, and its `session.cost` column is `0` whenever a model is served
+via a proxy with no price table (e.g. an OLLAMA gateway fronting `glm-5.2` or
+`kimi-k2.7-code`). When `cost` is 0, the adapter recomputes from tokens via
+`opencode.rateFor`, which delegates `claude-*` to `anthropic.rateFor` and
+`gpt-5*`/`o*` to `openai.rateFor` (single source of truth — no drift with the
+Claude/Codex adapters), then resolves against its own comprehensive `RATES`
+table + family heuristics covering OpenAI's gpt-4.1/gpt-4o families, Google
+Gemini, Zhipu GLM (incl. `glm-5.2`), Moonshot Kimi (incl. `kimi-k2.7-code`),
+DeepSeek, Alibaba Qwen, and Mistral/Codestral. Unknown ids (self-hosted OLLAMA
+open-weights, or untracked hosted models) fall back to an honest `$0` rather
+than a fabricated price. Add a new `RATES` entry + heuristic branch when a
+vendor changes pricing or you want to cover another provider.
+
+> **Discovery + the file cache:** the orchestrator's mtime cache keys on
+> `path + mtime + size`, but OpenCode has one db file for *all* sessions. So
+> `discoverSessions()` emits one `DiscoveredSession` per `session` row with
+> `key = dbPath + "#" + id` (unique per session) and a shared `path = dbPath` —
+> the orchestrator's `stat(path)` then invalidates every OpenCode row together
+> when the db changes. `parseSession` recovers the id by splitting `key` on `"#"`.
 
 ### Antigravity parsing (`lib/adapters/antigravity.ts`) — activity-only
 
@@ -222,9 +285,14 @@ heuristic** (`haiku` / `opus` / `sonnet` / `fable`). When Anthropic pricing
 changes, add new rates to `RATES`; update `DEFAULT_RATE` last.
 
 > Each vendor lives in its own `lib/pricing/<vendor>.ts` (`anthropic.ts`,
-> `openai.ts`, …). `openai.ts` follows the same pattern with gpt-5 / gpt-5-mini
-> / gpt-5-nano / gpt-5-pro rates; Codex subscriptions aren't pay-per-token
-> either, so its numbers are the same API-price-equivalent gauge.
+> `openai.ts`, `opencode.ts`, …). `openai.ts` follows the same pattern with
+> gpt-5 / gpt-5-mini / gpt-5-nano / gpt-5-pro rates; Codex subscriptions aren't
+> pay-per-token either, so its numbers are the same API-price-equivalent gauge.
+> `opencode.ts` is **multi-vendor** — it delegates `claude-*` to `anthropic` and
+> `gpt-5*`/`o*` to `openai` (no drift with the per-agent adapters), and adds its
+> own `RATES` table for OpenAI's gpt-4.1/gpt-4o families, Google Gemini, Zhipu
+> GLM, Moonshot Kimi, DeepSeek, Qwen, and Mistral. Unknown ids (e.g.
+> proxy-routed or self-hosted OLLAMA models) return an honest `$0`.
 
 ---
 
@@ -253,6 +321,7 @@ lib/
     types.ts        Adapter, DiscoveredSession interfaces (slug + hasTokenData + dirLabel)
     claude.ts       Claude Code adapter (JSONL, paths, slug humanizing, Anthropic cost)
     codex.ts        Codex adapter (rollout JSONL, cwd-basename projects, OpenAI cost)
+    opencode.ts     OpenCode adapter (SQLite via better-sqlite3, multi-vendor cost)
     antigravity.ts  Antigravity adapter (transcript JSONL, activity-only, no tokens/cost)
   usage-data.ts     orchestrator: registry, mtime cache, aggregation, scopeDataset
   format.ts         display formatters (formatTokens, formatCost, tilde, …)
@@ -260,6 +329,7 @@ lib/
   pricing/
     anthropic.ts    Anthropic API-price-equivalent cost (Claude adapter imports)
     openai.ts       OpenAI API-price-equivalent cost (Codex adapter imports)
+    opencode.ts     Multi-vendor cost (OpenCode adapter imports; delegates to anthropic + openai, $0 fallback)
   types.ts          shared types (UsageDataset, Session.adapter, AdapterStatus, …)
 ```
 
@@ -279,39 +349,62 @@ Each component receives a pre-aggregated slice of `UsageDataset`:
 
 ## Adding a new agent
 
-To support a new tool (Codex, Antigravity, …):
+To support a new tool (OpenCode, Goose, …):
 
 1. **Create the adapter** — `lib/adapters/<tool>.ts` implementing `Adapter`
    from `lib/adapters/types.ts`:
-   - `name` — display name ("Antigravity").
-   - `slug` — URL-safe id (`"antigravity"`); becomes the per-agent route
-     (`/antigravity`) and nav pill automatically.
+   - `name` — display name ("OpenCode").
+   - `slug` — URL-safe id (`"opencode"`); becomes the per-agent route
+     (`/opencode`) and nav pill automatically.
    - `hasTokenData` — `true` if the tool writes per-request token counts to disk
-     (Claude, Codex); `false` if it keeps usage server-side (Antigravity). When
-     `false`, the per-agent page renders activity panels (sessions, messages,
-     tool calls, models, projects) instead of token/cost panels, the overview
-     hub card shows activity stats, and the sessions table drops/`—`s the
-     token + cost columns for that adapter.
+     (Claude, Codex, OpenCode); `false` if it keeps usage server-side
+     (Antigravity). When `false`, the per-agent page renders activity panels
+     (sessions, messages, tool calls, models, projects) instead of token/cost
+     panels, the overview hub card shows activity stats, and the sessions table
+     drops/`—`s the token + cost columns for that adapter.
    - `isAvailable()` — `stat` the tool's data dir; return false if missing.
    - `discoverSessions()` — walk the tool's data dir and return
-     `DiscoveredSession[]` (`{ key, path, projectSlug }`).
+     `DiscoveredSession[]` (`{ key, path, projectSlug }`). For a **SQLite**
+     tool, emit one row per session with `key = dbPath + "#" + id` and a shared
+     `path = dbPath` (so the mtime cache invalidates all rows together).
    - `parseSession(d)` — read `d.path`, map the tool's raw records onto the
      normalized `Session` shape (zeros for token fields it doesn't expose),
      set `adapter: "<slug>"` on the returned `Session`, compute cost via its
      vendor pricing (skip pricing entirely if `hasTokenData: false`).
-   - `dirLabel()` — display path for the header subtitle (e.g. `~/.antigravity`).
+   - `dirLabel()` — display path for the header subtitle (e.g. `~/.local/share/opencode/opencode.db`).
 2. **Add pricing** *(only if `hasTokenData: true`)* — for a new vendor, create
    `lib/pricing/<vendor>.ts` with a `costOf(...)` matching the existing
-   `anthropic.ts` / `openai.ts` ones. Activity-only adapters skip this — there
-   are no tokens to price.
+   `anthropic.ts` / `openai.ts` ones. Multi-vendor tools can delegate to the
+   existing modules and fall back to `$0` for unknown models (see `opencode.ts`).
+   Activity-only adapters skip this — there are no tokens to price.
 3. **Register it** — add the adapter to `ADAPTERS` in `lib/usage-data.ts`.
-4. **Env override** — if the tool's data dir is configurable, read its env var
-   inside the adapter (e.g. `ANTIGRAVITY_DIR`), mirroring the `CLAUDE_DIR` pattern.
+4. **Native dep** *(SQLite tools only)* — add `better-sqlite3` and list it in
+   `serverExternalPackages` in `next.config.ts` so its `.node` binary isn't
+   bundled. Approve its build script via `pnpm.onlyBuiltDependencies` in
+   `package.json` (or `pnpm approve-builds`).
+5. **Env override** — if the tool's data dir is configurable, read its env var
+   inside the adapter (e.g. `OPENCODE_DIR`), mirroring the `CLAUDE_DIR` pattern.
 
 No other files should need to change — the orchestrator, cache, aggregation,
 scoping, routes, and all components stay as-is. The new tool gets a nav pill,
 an overview hub card, and its own `/<slug>` page for free, and its sessions
 merge into the combined `UsageDataset` on the overview.
+
+### Future adapters (not built yet)
+
+Candidates ranked by token-data availability + fit with existing patterns (none
+are installed on this machine, so each needs local recon first):
+
+1. **Goose (Block)** — `~/.local/share/goose/sessions/sessions.db` (SQLite,
+   v1.10+) + legacy `.jsonl`. Has tokens, no cost column. **Reuses the OpenCode
+   SQLite pattern** — lowest marginal effort.
+2. **Continue** — `~/.continue/sessions/*.jsonl` with per-message token counts.
+   **Reuses the Claude/Codex JSONL streaming pattern** — no native dep.
+3. **Aider** — `.aider.chat.history.md` (markdown) + `.aider.llm.history`
+   (JSON-ish LLM log with token/cost per call). Popular but messiest parse.
+4. **Amp / Zed AI / Charm Crush** — likely have sessions; formats need recon.
+5. **Cursor / Windsurf / GitHub Copilot Chat / Roo Code / Cline** — IDE-backed,
+   opaque storage, proprietary and version-unstable — higher maintenance tier.
 
 ---
 
@@ -366,9 +459,10 @@ columns, KPIs, and tooltips to prevent layout shift.
 
 ## Configuration
 
-### `CLAUDE_DIR` / `CODEX_DIR` / `ANTIGRAVITY_DIR` override
+### `CLAUDE_DIR` / `CODEX_DIR` / `OPENCODE_DIR` / `ANTIGRAVITY_DIR` override
 
-Set `CLAUDE_DIR=/path/to/.claude`, `CODEX_DIR=/path/to/.codex`, or
+Set `CLAUDE_DIR=/path/to/.claude`, `CODEX_DIR=/path/to/.codex`,
+`OPENCODE_DIR=/path/to/.local/share/opencode`, or
 `ANTIGRAVITY_DIR=/path/to/.gemini/antigravity-ide` to point at an alternate
 config directory (e.g. for testing, or a non-default install path). Each
 adapter reads its own env var; it flows into every file lookup.
@@ -376,53 +470,78 @@ adapter reads its own env var; it flows into every file lookup.
 ```bash
 CLAUDE_DIR=/tmp/fake-claude pnpm dev
 CODEX_DIR=/tmp/fake-codex pnpm dev
+OPENCODE_DIR=/tmp/fake-opencode pnpm dev
 ANTIGRAVITY_DIR=/tmp/fake-anti pnpm dev
 ```
 
 Each adapter owns its own env override.
 
+### Enable/disable adapters (`<SLUG>_ENABLED`)
+
+Set `<SLUG>_ENABLED=0|false|no|off` (slug uppercased: `CLAUDE_ENABLED`,
+`CODEX_ENABLED`, `OPENCODE_ENABLED`, `ANTIGRAVITY_ENABLED`) to turn an adapter
+off. Unset → enabled. A disabled adapter drops out completely — no hub card, no
+nav pill, no per-agent route (its `/<slug>` 404s), and no contribution to the
+combined totals. This is distinct from a missing data dir, which keeps the
+adapter listed with a muted "Not found" card.
+
+```bash
+OPENCODE_ENABLED=0 ANTIGRAVITY_ENABLED=false pnpm dev   # only Claude + Codex
+CLAUDE_ENABLED=0 pnpm dev                                # hide the Claude adapter
+```
+
+The flag is resolved in the orchestrator from the adapter's slug, so all
+consumers (`getUsageDataset`, `knownSlugs`, `adapterMeta`) stay consistent and
+no per-adapter code is needed when adding a new agent.
+
 ### No other configuration
 
-There is no `.env`, no config file, no auth, no database. The only inputs are
-the session transcripts under your agents' data directories.
+There is no `.env`, no config file, no auth. The only inputs are the session
+transcripts under your agents' data directories (and OpenCode's SQLite db).
+The app writes no database of its own.
 
 ## Demo deployment (Vercel)
 
 The dashboard reads from the filesystem, so a real deploy shows your own data
-only if you point `CLAUDE_DIR` / `CODEX_DIR` / `ANTIGRAVITY_DIR` at directories
-present on the host. For a public **demo deploy** (e.g. on Vercel), sample
-transcripts are committed under `demo-data/` and regenerated by:
+only if you point `CLAUDE_DIR` / `CODEX_DIR` / `OPENCODE_DIR` /
+`ANTIGRAVITY_DIR` at directories present on the host. For a public **demo
+deploy** (e.g. on Vercel), sample transcripts are committed under `demo-data/`
+and regenerated by:
 
 ```bash
-node scripts/generate-fake-data.mjs    # writes ~40 Claude sessions + ~25 Codex rollouts + ~20 Antigravity transcripts over 30 days
+node scripts/generate-fake-data.mjs    # writes ~45 Claude sessions + ~25 Codex rollouts + ~20 OpenCode sessions + ~20 Antigravity transcripts over 30 days
 ```
 
-This produces three parallel trees that match the adapters' on-disk shapes:
+This produces four parallel trees that match the adapters' on-disk shapes:
 
 - `demo-data/projects/<slug>/<id>.jsonl` — fake Claude Code sessions
 - `demo-data/codex/sessions/YYYY/MM/DD/rollout-*.jsonl` + `demo-data/codex/session_index.jsonl` — fake Codex rollouts
+- `demo-data/opencode/opencode.db` — fake OpenCode SQLite db (session/message/part tables)
 - `demo-data/antigravity/brain/<uuid>/.system_generated/logs/transcript_full.jsonl` — fake Antigravity transcripts (activity-only)
 
 To deploy the demo on Vercel:
 
 1. Push the repo (the `demo-data/` directory and `next.config.ts`'s
-   `outputFileTracingIncludes` ensure the JSONL ships in the serverless bundle —
-   Next's file tracer can't see files read via `readdir` at runtime, so they're
-   included explicitly, including the `.system_generated/logs` dot-dirs).
+   `outputFileTracingIncludes` ensure the JSONL + the OpenCode db ship in the
+   serverless bundle — Next's file tracer can't see files read via `readdir` at
+   runtime, so they're included explicitly, including the `.system_generated/logs`
+   dot-dirs and the `*.db` / `*.db-wal` / `*.db-shm` files).
 2. Set these env vars in the Vercel project settings (resolved against the
    project root, which is the runtime cwd):
    - **`CLAUDE_DIR=./demo-data`** (→ `./demo-data/projects`)
    - **`CODEX_DIR=./demo-data/codex`** (→ `./demo-data/codex/sessions` + index)
+   - **`OPENCODE_DIR=./demo-data/opencode`** (→ `./demo-data/opencode/opencode.db`)
    - **`ANTIGRAVITY_DIR=./demo-data/antigravity`** (→ `./demo-data/antigravity/brain`)
 3. Deploy. The dashboard renders the fake data across every panel — the
-   overview shows all three agents' cards plus combined token/cost panels
-   (Claude + Codex) and activity contributions (Antigravity), and `/claude`,
-   `/codex`, `/antigravity` show each agent scoped.
+   overview shows all four agents' cards plus combined token/cost panels
+   (Claude + Codex + OpenCode) and activity contributions (Antigravity), and
+   `/claude`, `/codex`, `/opencode`, `/antigravity` show each agent scoped.
 
 For a deploy backed by your **real** data, copy your `~/.claude/projects/`,
-`~/.codex/`, and `~/.gemini/antigravity-ide/brain/` trees into the repo (or a
-private sibling) and point the env vars at them the same way — but note that
-exposes your real usage transcripts to anyone who can read the deploy.
+`~/.codex/`, `~/.local/share/opencode/`, and `~/.gemini/antigravity-ide/brain/`
+trees into the repo (or a private sibling) and point the env vars at them the
+same way — but note that exposes your real usage transcripts to anyone who can
+read the deploy.
 
 ---
 

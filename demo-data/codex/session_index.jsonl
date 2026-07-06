@@ -1,27 +1,27 @@
-{"id":"ea644b4f-eb64-ec64-e564-0000e6644503","thread_name":"webapp: refactor auth flow","updated_at":"2026-07-01T00:21:00.000Z"}
-{"id":"42f44944-45f4-44f4-3ff4-00003ef442f8","thread_name":"webapp: split pricing by vendor","updated_at":"2026-06-15T10:13:00.000Z"}
-{"id":"52eda6af-53ed-54ed-4ded-00004eeda063","thread_name":"webapp: add empty states","updated_at":"2026-06-15T13:50:00.000Z"}
-{"id":"2531844a-2431-2331-2231-000021317dfe","thread_name":"webapp: add empty states","updated_at":"2026-07-03T02:54:00.000Z"}
-{"id":"947af2df-957a-967a-8f7a-0000907aec93","thread_name":"webapp: wire up theme switcher","updated_at":"2026-06-24T05:38:00.000Z"}
-{"id":"e26931c1-df69-e069-e569-0000e669380d","thread_name":"api: implement adapter seam","updated_at":"2026-06-21T10:06:00.000Z"}
-{"id":"143856e8-1738-1638-1938-000018385d34","thread_name":"api: optimize jsonl parser","updated_at":"2026-07-06T03:20:00.000Z"}
-{"id":"e35a4eb3-e45a-e55a-e65a-0000e75a54ff","thread_name":"api: add empty states","updated_at":"2026-06-08T06:40:00.000Z"}
-{"id":"2d4ae8fd-2a4a-2b4a-284a-0000294ae2b1","thread_name":"api: optimize jsonl parser","updated_at":"2026-07-03T08:28:00.000Z"}
-{"id":"da9a4eb3-db9a-dc9a-dd9a-0000de9a54ff","thread_name":"api: debug recharts tooltip","updated_at":"2026-06-23T02:38:00.000Z"}
-{"id":"58eef89d-55ee-56ee-53ee-000054eef251","thread_name":"api: scaffold api route","updated_at":"2026-06-07T05:41:00.000Z"}
-{"id":"be59ee8b-bf59-c059-c159-0000c259f4d7","thread_name":"api: split pricing by vendor","updated_at":"2026-06-21T09:20:00.000Z"}
-{"id":"91e2b8bb-92e2-93e2-94e2-000095e2bf07","thread_name":"mobile: migrate to tailwind v4","updated_at":"2026-06-25T00:39:00.000Z"}
-{"id":"b7ab6272-b6ab-b5ab-b4ab-0000b3ab5c26","thread_name":"mobile: add pagination to sessions table","updated_at":"2026-07-06T08:59:00.000Z"}
-{"id":"55caafb0-58ca-57ca-5aca-000059cab5fc","thread_name":"mobile: fix layout shift on mobile","updated_at":"2026-06-27T02:06:00.000Z"}
-{"id":"8ef16c2d-8bf1-8cf1-89f1-00008af165e1","thread_name":"ml-pipeline: refactor auth flow","updated_at":"2026-06-19T03:55:00.000Z"}
-{"id":"b5cc48a3-b6cc-b7cc-b8cc-0000b9cc4eef","thread_name":"ml-pipeline: add pagination to sessions table","updated_at":"2026-07-05T07:42:00.000Z"}
-{"id":"b2034b4b-b303-b403-b503-0000b6035197","thread_name":"ml-pipeline: fix layout shift on mobile","updated_at":"2026-06-14T07:33:00.000Z"}
-{"id":"71b4254a-70b4-6fb4-6eb4-00006db41efe","thread_name":"ml-pipeline: implement adapter seam","updated_at":"2026-06-10T03:13:00.000Z"}
-{"id":"86d6a30f-87d6-88d6-81d6-000082d69cc3","thread_name":"ml-pipeline: add cost estimation","updated_at":"2026-06-12T04:36:00.000Z"}
-{"id":"0feeb6f5-0cee-0dee-0aee-00000beeb0a9","thread_name":"docs-site: debug recharts tooltip","updated_at":"2026-06-18T08:11:00.000Z"}
-{"id":"a0fd56e6-9ffd-9efd-a5fd-0000a4fd5d32","thread_name":"docs-site: tune kpi sparkline","updated_at":"2026-07-01T14:11:00.000Z"}
-{"id":"5d1d89aa-5c1d-5b1d-5a1d-0000591d835e","thread_name":"docs-site: wire up theme switcher","updated_at":"2026-06-08T00:06:00.000Z"}
-{"id":"b005a2ca-af05-ae05-ad05-0000ac059c7e","thread_name":"docs-site: migrate to tailwind v4","updated_at":"2026-06-22T01:00:00.000Z"}
-{"id":"9d6cde50-a06c-9f6c-a26c-0000a16ce49c","thread_name":"docs-site: scaffold api route","updated_at":"2026-06-16T01:30:00.000Z"}
-{"id":"4524d367-4624-4724-4024-00004124cd1b","thread_name":"docs-site: debug recharts tooltip","updated_at":"2026-06-23T10:11:00.000Z"}
-{"id":"085de8ef-095d-0a5d-035d-0000045de2a3","thread_name":"docs-site: implement adapter seam","updated_at":"2026-06-26T12:11:00.000Z"}
+{"id":"cfbf50a0-d2bf-d1bf-d4bf-0000d3bf56ec","thread_name":"webapp: split pricing by vendor","updated_at":"2026-06-17T04:30:00.000Z"}
+{"id":"5252ba46-5152-5052-5752-00005652c092","thread_name":"webapp: tune kpi sparkline","updated_at":"2026-06-27T12:48:00.000Z"}
+{"id":"03b9924e-02b9-01b9-08b9-000007b9989a","thread_name":"webapp: fix layout shift on mobile","updated_at":"2026-06-17T10:07:00.000Z"}
+{"id":"feb970b6-fdb9-fcb9-03b9-000002b97702","thread_name":"webapp: add cost estimation","updated_at":"2026-06-11T11:41:00.000Z"}
+{"id":"3a54020f-3b54-3c54-3553-00003653fbc3","thread_name":"webapp: add session search","updated_at":"2026-07-05T14:03:00.000Z"}
+{"id":"f32f6119-f02f-f12f-f62f-0000f72f6765","thread_name":"webapp: fix layout shift on mobile","updated_at":"2026-07-04T05:34:00.000Z"}
+{"id":"b8cc9530-bbcc-bacc-bdcc-0000bccc9b7c","thread_name":"webapp: fix ssr hydration mismatch","updated_at":"2026-07-06T12:10:00.000Z"}
+{"id":"4253e2cc-4553-4453-3f53-00003e53dc80","thread_name":"api: implement adapter seam","updated_at":"2026-06-15T06:33:00.000Z"}
+{"id":"b2571222-b157-b057-af57-0000ae570bd6","thread_name":"api: rewrite daily attribution","updated_at":"2026-06-14T04:46:00.000Z"}
+{"id":"c58238db-c682-c782-c882-0000c9823f27","thread_name":"api: debug recharts tooltip","updated_at":"2026-06-17T06:02:00.000Z"}
+{"id":"075cc5f6-065c-055c-0c5c-00000b5ccc42","thread_name":"api: tune pastel chart palette","updated_at":"2026-06-08T06:57:00.000Z"}
+{"id":"17f1eddf-18f1-19f1-12f1-000013f1e793","thread_name":"api: add empty states","updated_at":"2026-06-09T22:59:00.000Z"}
+{"id":"0210ff01-ff10-0010-0511-00000611054d","thread_name":"api: add codex adapter","updated_at":"2026-06-22T13:07:00.000Z"}
+{"id":"91e2b8bb-92e2-93e2-94e2-000095e2bf07","thread_name":"mobile: optimize jsonl parser","updated_at":"2026-06-25T00:47:00.000Z"}
+{"id":"1e1f6a4a-1d1f-1c1f-1b1f-00001a1f63fe","thread_name":"mobile: add session search","updated_at":"2026-06-08T12:11:00.000Z"}
+{"id":"0976caf8-0c76-0b76-0e76-00000d76d144","thread_name":"mobile: optimize jsonl parser","updated_at":"2026-07-05T12:43:00.000Z"}
+{"id":"9619d5b1-9319-9419-9919-00009a19dbfd","thread_name":"mobile: wire up theme switcher","updated_at":"2026-07-01T01:49:00.000Z"}
+{"id":"049238aa-0392-0292-0192-00000092325e","thread_name":"mobile: add session search","updated_at":"2026-06-15T04:39:00.000Z"}
+{"id":"e4ba93a4-e7ba-e6ba-e1ba-0000e0ba8d58","thread_name":"mobile: tune pastel chart palette","updated_at":"2026-07-04T05:12:00.000Z"}
+{"id":"8f642fe3-9064-9164-9264-00009364362f","thread_name":"mobile: debug recharts tooltip","updated_at":"2026-06-10T09:17:00.000Z"}
+{"id":"c692e3df-c792-c892-c192-0000c292dd93","thread_name":"ml-pipeline: add pagination to sessions table","updated_at":"2026-06-21T05:40:00.000Z"}
+{"id":"eec8a2c3-efc8-f0c8-f1c8-0000f2c8a90f","thread_name":"ml-pipeline: split pricing by vendor","updated_at":"2026-06-15T00:09:00.000Z"}
+{"id":"8db212c7-8eb2-8fb2-88b2-000089b20c7b","thread_name":"ml-pipeline: wire up theme switcher","updated_at":"2026-06-10T06:34:00.000Z"}
+{"id":"d3c9050d-d0c9-d1c9-cec8-0000cfc8fec1","thread_name":"ml-pipeline: implement adapter seam","updated_at":"2026-06-06T23:52:00.000Z"}
+{"id":"365f6d70-395f-385f-3b5f-00003a5f73bc","thread_name":"docs-site: fix layout shift on mobile","updated_at":"2026-06-30T12:14:00.000Z"}
+{"id":"d12177ae-d021-cf21-d621-0000d5217dfa","thread_name":"docs-site: wire up theme switcher","updated_at":"2026-06-20T08:27:00.000Z"}
+{"id":"c8ffd475-c5ff-c6ff-c3ff-0000c4ffce29","thread_name":"docs-site: wire up theme switcher","updated_at":"2026-07-01T07:48:00.000Z"}

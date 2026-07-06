@@ -108,7 +108,8 @@ export default async function AgentPage({
             >
               {active.name} doesn&apos;t write token or cost data to disk —
               showing activity (sessions, messages, tool calls) instead. Token
-              and cost panels are Claude + Codex only.
+              and cost panels cover the token-bearing adapters (Claude, Codex,
+              OpenCode) only.
             </div>
 
             <section className="mb-8">

@@ -4,8 +4,9 @@
 //   - Codex rollouts        → demo-data/codex/sessions/YYYY/MM/DD/rollout-*.jsonl
 //     plus demo-data/codex/session_index.jsonl (id → thread_name index)
 //   - Antigravity transcripts → demo-data/antigravity/brain/<uuid>/.system_generated/logs/transcript_full.jsonl
+//   - OpenCode sessions     → demo-data/opencode/opencode.db (SQLite: session/message/part)
 //
-// All three match the on-disk shapes the adapters read. Run:
+// All four match the on-disk shapes the adapters read. Run:
 //
 //   node scripts/generate-fake-data.mjs
 //
@@ -13,6 +14,7 @@
 //   CLAUDE_DIR=./demo-data            (→ ./demo-data/projects)
 //   CODEX_DIR=./demo-data/codex       (→ ./demo-data/codex/sessions + index)
 //   ANTIGRAVITY_DIR=./demo-data/antigravity  (→ ./demo-data/antigravity/brain)
+//   OPENCODE_DIR=./demo-data/opencode  (→ ./demo-data/opencode/opencode.db)
 //
 // (relative to the project root, which is the runtime cwd on Vercel). Re-run
 // any time to regenerate / expand.
@@ -22,11 +24,13 @@
 
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import Database from "better-sqlite3";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "demo-data");
 const CODEX_OUT = join(OUT, "codex");
 const ANTI_OUT = join(OUT, "antigravity");
+const OPENCODE_OUT = join(OUT, "opencode");
 
 const CLAUDE_MODELS = [
   "claude-sonnet-5",
@@ -38,6 +42,16 @@ const CLAUDE_MODELS = [
 const CODEX_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5-mini"];
 
 const ANTIGRAVITY_MODELS = ["Gemini 3.5 Flash", "Gemini 3.1 Pro", "Gemini 3 Flash"];
+
+// OpenCode is provider-agnostic — mix Anthropic-style, OpenAI-style, and
+// proxy-routed model ids to exercise the pricing fallback (claude-* and gpt-*
+// resolve via the vendor modules; glm/kimi fall back to an honest $0).
+const OPENCODE_MODELS = [
+  { id: "claude-sonnet-5", providerID: "anthropic" },
+  { id: "gpt-4.1", providerID: "openai" },
+  { id: "glm-5.2", providerID: "ollama-cloud" },
+  { id: "kimi-k2.7-code", providerID: "ollama-cloud" },
+];
 
 // Shared project set — same cwds for both tools so the overview's by-project
 // view shows them merged (one person, two tools, same repos).
@@ -384,13 +398,137 @@ function makeAntigravitySession({ project, dayOffset, idx }) {
 }
 
 // ---------------------------------------------------------------------------
+// OpenCode (SQLite: per-session aggregates in the `session` table)
+// ---------------------------------------------------------------------------
+
+function makeOpenCodeSession({ project, dayOffset, idx }) {
+  const sessionId = `ses_${uuidFrom(`opencode-${project.slug}-${dayOffset}-${idx}`)}`;
+  const start = new Date();
+  start.setDate(start.getDate() - dayOffset);
+  start.setHours(rand(8, 22), rand(0, 59), 0, 0);
+  const durationMin = rand(5, 120);
+  const end = new Date(start.getTime() + durationMin * 60_000);
+
+  const title = `${project.titlePrefix}: ${pick(TITLE_FRAGMENTS)}`;
+  const cwd = project.cwd;
+  const modelMeta = pick(OPENCODE_MODELS);
+  const model = JSON.stringify({ id: modelMeta.id, providerID: modelMeta.providerID, variant: "default" });
+  const agent = pick(["build", "plan", "general"]);
+
+  // Realistic token volume — proxy-routed models (glm/kimi) get big input,
+  // Anthropic/OpenAI get cache activity too. Cost stays 0 (OpenCode has no
+  // price table for these via the proxy); the adapter recomputes for known ids.
+  const isProxy = modelMeta.providerID === "ollama-cloud";
+  const tokensInput = rand(isProxy ? 50_000 : 4_000, isProxy ? 4_000_000 : 200_000);
+  const tokensCacheRead = isProxy ? 0 : (Math.random() < 0.6 ? rand(5_000, 120_000) : 0);
+  const tokensCacheWrite = isProxy ? 0 : (Math.random() < 0.4 ? rand(2_000, 30_000) : 0);
+  const tokensOutput = rand(500, 12_000);
+  const tokensReasoning = isProxy ? 0 : rand(0, Math.floor(tokensOutput * 0.5));
+
+  const messageCount = rand(4, 24);
+  const toolCallCount = rand(2, 40);
+
+  return {
+    sessionId, title, cwd, model, agent,
+    directory: cwd,
+    cost: 0,
+    tokensInput, tokensOutput, tokensReasoning, tokensCacheRead, tokensCacheWrite,
+    timeCreated: start.getTime(),
+    timeUpdated: end.getTime(),
+    messageCount, toolCallCount,
+  };
+}
+
+// Schema subset matching the real opencode.db columns the adapter reads.
+const OPENCODE_SCHEMA = `
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  directory TEXT NOT NULL,
+  title TEXT,
+  agent TEXT,
+  model TEXT,
+  cost REAL NOT NULL DEFAULT 0,
+  tokens_input INTEGER NOT NULL DEFAULT 0,
+  tokens_output INTEGER NOT NULL DEFAULT 0,
+  tokens_reasoning INTEGER NOT NULL DEFAULT 0,
+  tokens_cache_read INTEGER NOT NULL DEFAULT 0,
+  tokens_cache_write INTEGER NOT NULL DEFAULT 0,
+  time_created INTEGER NOT NULL,
+  time_updated INTEGER NOT NULL
+);
+CREATE TABLE message (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  time_created INTEGER NOT NULL,
+  data TEXT NOT NULL
+);
+CREATE TABLE part (
+  id TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  time_created INTEGER NOT NULL,
+  data TEXT NOT NULL
+);
+CREATE INDEX message_session_idx ON message (session_id);
+CREATE INDEX part_session_idx ON part (session_id);
+`;
+
+function insertOpenCodeSession(db, s) {
+  db.prepare(
+    `INSERT INTO session (id, directory, title, agent, model, cost,
+        tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write,
+        time_created, time_updated)
+     VALUES (@sessionId, @directory, @title, @agent, @model, @cost,
+        @tokensInput, @tokensOutput, @tokensReasoning, @tokensCacheRead, @tokensCacheWrite,
+        @timeCreated, @timeUpdated)`,
+  ).run(s);
+
+  // Insert enough message + part rows to satisfy the count subqueries. Parts
+  // alternate text/tool so the `type='tool'` count matches toolCallCount.
+  const msgStmt = db.prepare(
+    `INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)`,
+  );
+  const partStmt = db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, data) VALUES (?, ?, ?, ?, ?)`,
+  );
+  let partSeq = 0;
+  for (let m = 0; m < s.messageCount; m++) {
+    const msgId = `msg_${s.sessionId}_${m}`;
+    const msgTime = s.timeCreated + Math.floor((s.timeUpdated - s.timeCreated) * (m / Math.max(1, s.messageCount)));
+    msgStmt.run(msgId, s.sessionId, msgTime, JSON.stringify({ role: m % 2 === 0 ? "user" : "assistant" }));
+    // One text part per message.
+    partStmt.run(
+      `prt_${s.sessionId}_${partSeq++}`,
+      msgId, s.sessionId, msgTime,
+      JSON.stringify({ type: "text", text: `message ${m}` }),
+    );
+  }
+  // Spread tool parts across the messages.
+  for (let t = 0; t < s.toolCallCount; t++) {
+    const ownerMsg = `msg_${s.sessionId}_${t % s.messageCount}`;
+    partStmt.run(
+      `prt_${s.sessionId}_${partSeq++}`,
+      ownerMsg, s.sessionId, s.timeCreated + t * 1000,
+      JSON.stringify({ type: "tool", tool: "edit_file", state: "completed" }),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
   await rm(OUT, { recursive: true, force: true });
   let claudeCount = 0;
   let codexCount = 0;
   let antiCount = 0;
+  let openCount = 0;
   const codexIndex = [];
+
+  // OpenCode: one SQLite db for all sessions.
+  await mkdir(OPENCODE_OUT, { recursive: true });
+  const opencodeDb = new Database(join(OPENCODE_OUT, "opencode.db"));
+  opencodeDb.exec(OPENCODE_SCHEMA);
+  const insertOpen = opencodeDb.transaction((s) => insertOpenCodeSession(opencodeDb, s));
 
   for (const project of PROJECTS) {
     // Claude
@@ -440,6 +578,15 @@ async function main() {
       await writeFile(file, body, "utf8");
       antiCount++;
     }
+
+    // OpenCode — per-session aggregates in SQLite (token-bearing)
+    const openPer = rand(3, 6);
+    for (let i = 0; i < openPer; i++) {
+      const dayOffset = rand(0, 29);
+      const s = makeOpenCodeSession({ project, dayOffset, idx: i });
+      insertOpen(s);
+      openCount++;
+    }
   }
 
   // Codex title index
@@ -448,8 +595,10 @@ async function main() {
   const indexBody = codexIndex.map((e) => JSON.stringify(e)).join("\n") + "\n";
   await writeFile(join(CODEX_OUT, "session_index.jsonl"), indexBody, "utf8");
 
+  opencodeDb.close();
+
   console.log(
-    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")}, ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}, and ${antiCount} Antigravity transcripts to ${ANTI_OUT}`,
+    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")}, ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}, ${antiCount} Antigravity transcripts to ${ANTI_OUT}, and ${openCount} OpenCode sessions to ${join(OPENCODE_OUT, "opencode.db")}`,
   );
 }
 
