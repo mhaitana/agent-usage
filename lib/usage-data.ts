@@ -22,6 +22,7 @@ import type { Adapter, DiscoveredSession } from "./adapters/types";
 import { claudeAdapter } from "./adapters/claude";
 import { codexAdapter } from "./adapters/codex";
 import { opencodeAdapter } from "./adapters/opencode";
+import { copilotAdapter } from "./adapters/copilot";
 import { antigravityAdapter } from "./adapters/antigravity";
 
 // Registered adapters, in the order they appear in the header banner / status.
@@ -30,6 +31,7 @@ const ADAPTERS: Adapter[] = [
   claudeAdapter,
   codexAdapter,
   opencodeAdapter,
+  copilotAdapter,
   antigravityAdapter,
 ];
 

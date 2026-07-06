@@ -5,8 +5,10 @@
 //     plus demo-data/codex/session_index.jsonl (id → thread_name index)
 //   - Antigravity transcripts → demo-data/antigravity/brain/<uuid>/.system_generated/logs/transcript_full.jsonl
 //   - OpenCode sessions     → demo-data/opencode/opencode.db (SQLite: session/message/part)
+//   - GitHub Copilot Chat   → demo-data/copilot/workspaceStorage/<hash>/chatSessions/<id>.jsonl
+//     (+ workspace.json folder map) and demo-data/copilot/globalStorage/emptyWindowChatSessions/<id>.jsonl
 //
-// All four match the on-disk shapes the adapters read. Run:
+// All five match the on-disk shapes the adapters read. Run:
 //
 //   node scripts/generate-fake-data.mjs
 //
@@ -15,6 +17,7 @@
 //   CODEX_DIR=./demo-data/codex       (→ ./demo-data/codex/sessions + index)
 //   ANTIGRAVITY_DIR=./demo-data/antigravity  (→ ./demo-data/antigravity/brain)
 //   OPENCODE_DIR=./demo-data/opencode  (→ ./demo-data/opencode/opencode.db)
+//   COPILOT_DIR=./demo-data/copilot    (→ ./demo-data/copilot/workspaceStorage + globalStorage)
 //
 // (relative to the project root, which is the runtime cwd on Vercel). Re-run
 // any time to regenerate / expand.
@@ -31,6 +34,7 @@ const OUT = join(ROOT, "demo-data");
 const CODEX_OUT = join(OUT, "codex");
 const ANTI_OUT = join(OUT, "antigravity");
 const OPENCODE_OUT = join(OUT, "opencode");
+const COPILOT_OUT = join(OUT, "copilot");
 
 const CLAUDE_MODELS = [
   "claude-sonnet-5",
@@ -52,6 +56,26 @@ const OPENCODE_MODELS = [
   { id: "glm-5.2", providerID: "ollama-cloud" },
   { id: "kimi-k2.7-code", providerID: "ollama-cloud" },
 ];
+
+// GitHub Copilot Chat is multi-vendor: a single chat can route to Anthropic,
+// OpenAI, Google, or a local OLLAMA gateway. Copilot prefixes most model ids
+// with `copilot/`; local OLLAMA ids come through unprefixed (e.g.
+// `ollama/Ollama/qwen3.6:35b`) and resolve to an honest $0 via copilot.ts.
+// `thinking` flags models that report separate reasoning tokens, so the demo
+// exercises the adapter's `thinking.tokens` → outputTokens bundling.
+const COPILOT_MODELS = [
+  { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5", multiplier: 1, thinking: false, vendor: "copilot" },
+  { id: "claude-opus-4.6", name: "Claude Opus 4.6", multiplier: 3, thinking: true, vendor: "copilot" },
+  { id: "claude-opus-4.8", name: "Claude Opus 4.8", multiplier: 3, thinking: true, vendor: "copilot" },
+  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex", multiplier: 1, thinking: false, vendor: "copilot" },
+  { id: "gpt-5.5", name: "GPT-5.5", multiplier: 1, thinking: false, vendor: "copilot" },
+  { id: "o4", name: "o4", multiplier: 5, thinking: true, vendor: "copilot" },
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", multiplier: 2, thinking: true, vendor: "copilot" },
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", multiplier: 1, thinking: false, vendor: "copilot" },
+  { id: "ollama/Ollama/qwen3.6:35b", name: "Qwen3.6 35B (local)", multiplier: 0, thinking: false, vendor: "ollama" },
+];
+
+const COPILOT_TOOLS = ["manage_todo_list", "view_file", "edit_file", "grep_search", "run_command", "list_directory", "search_web"];
 
 // Shared project set — same cwds for both tools so the overview's by-project
 // view shows them merged (one person, two tools, same repos).
@@ -99,6 +123,11 @@ function uuidFrom(seed) {
   const d = idFrom(seed + "d").slice(0, 4);
   const e = idFrom(seed + "e").padStart(12, "0");
   return `${a}-${b}-${c}-${d}-${e}`;
+}
+
+// 32-hex-char workspace hash (VS Code's workspaceStorage keys are 32-char hex).
+function hashFrom(seed) {
+  return (idFrom(seed + "x") + idFrom(seed + "y") + idFrom(seed + "z") + idFrom(seed + "w")).slice(0, 32);
 }
 
 // ---------------------------------------------------------------------------
@@ -515,6 +544,171 @@ function insertOpenCodeSession(db, s) {
 }
 
 // ---------------------------------------------------------------------------
+// GitHub Copilot Chat (token-bearing JSONL — VS Code chatSessions format)
+// ---------------------------------------------------------------------------
+
+// Each chatSessions line is {kind, v} (sometimes {kind, k, v}). `kind` is NOT
+// a reliable discriminator (kind:1 lines have bool/string/list/dict subtypes),
+// so the adapter discriminates by SHAPE: a request is an array whose items have
+// `requestId`; a token response is an object with a `metadata` object. We emit
+// a few noise lines (boolean / progressive-chunk list) matching the real format
+// to exercise the shape-based detection.
+function makeCopilotSession({ project, dayOffset, idx, emptyWindow }) {
+  const sessionId = uuidFrom(`copilot-${project ? project.slug : "empty"}-${dayOffset}-${idx}`);
+  const start = new Date();
+  start.setDate(start.getDate() - dayOffset);
+  start.setHours(rand(8, 22), rand(0, 59), 0, 0);
+  const durationMin = rand(4, 90);
+  const end = new Date(start.getTime() + durationMin * 60_000);
+
+  const title = project ? `${project.titlePrefix}: ${pick(TITLE_FRAGMENTS)}` : pick(TITLE_FRAGMENTS);
+  const cwd = emptyWindow ? null : project ? project.cwd : null;
+  const primaryModel = pick(COPILOT_MODELS);
+  const lines = [];
+
+  // kind:0 header — creationDate is epoch ms; inputState.selectedModel.metadata
+  // carries the model id (without copilot/ prefix) used as the adapter fallback.
+  lines.push({
+    kind: 0,
+    v: {
+      version: 3,
+      creationDate: start.getTime(),
+      initialLocation: "panel",
+      responderUsername: "GitHub Copilot",
+      sessionId,
+      hasPendingEdits: false,
+      requests: [],
+      pendingRequests: [],
+      inputState: {
+        selectedModel: {
+          metadata: {
+            id: primaryModel.id,
+            name: primaryModel.name,
+            family: primaryModel.id,
+            vendor: primaryModel.vendor,
+            version: "1",
+            multiplier: `${primaryModel.multiplier}x`,
+            multiplierNumeric: primaryModel.multiplier,
+            detail: `${primaryModel.multiplier}x`,
+            capabilities: { vision: true, toolCalling: true, agentMode: true },
+          },
+        },
+      },
+    },
+  });
+
+  // Noise line the adapter must ignore: kind:1 with a boolean v (real sessions
+  // echo flags like isCanceled as standalone lines).
+  lines.push({ kind: 1, v: false });
+
+  const turns = rand(3, 14);
+  const stepMs = (end.getTime() - start.getTime()) / turns;
+  for (let t = 0; t < turns; t++) {
+    const ts = new Date(start.getTime() + stepMs * t);
+    const model = Math.random() < 0.85 ? primaryModel : pick(COPILOT_MODELS);
+    const turnModelId = model.vendor === "copilot" ? `copilot/${model.id}` : model.id;
+
+    // kind:2 request list — one user message per turn.
+    lines.push({
+      kind: 2,
+      v: [
+        {
+          requestId: `request_${uuidFrom(`${sessionId}-${t}`)}`,
+          timestamp: ts.getTime(),
+          agent: {
+            extensionId: { value: "GitHub.copilot-chat", _lower: "github.copilot-chat" },
+            extensionVersion: "0.55.0",
+            publisherDisplayName: "GitHub",
+            extensionPublisherId: "GitHub",
+            extensionDisplayName: "GitHub Copilot Chat",
+            id: "github.copilot.editsAgent",
+            name: "agent",
+            fullName: "GitHub Copilot",
+            isDefault: true,
+            locations: ["panel"],
+            modes: ["agent"],
+          },
+          modelId: turnModelId,
+          responseId: `r_${uuidFrom(`${sessionId}-${t}-r`)}`,
+          modelState: 0,
+          contentReferences: [],
+          codeCitations: [],
+          timeSpentWaiting: rand(0, 4000),
+          response: [],
+          message: { text: t === 0 ? title : `turn ${t + 1}`, parts: [{ kind: "markdown", value: t === 0 ? title : `turn ${t + 1}` }] },
+          variableData: [],
+        },
+      ],
+    });
+
+    // Noise line: kind:2 list of progressive assistant output chunks — items
+    // lack `requestId`, so the adapter's isRequestList must skip them.
+    lines.push({ kind: 2, v: [{ kind: "markdown", value: "working", id: `chunk_${t}` }] });
+
+    // kind:1 token response — metadata holds promptTokens/outputTokens/
+    // toolCallRounds (the only fields the adapter reads off v.metadata).
+    const isBigModel = model.id.includes("opus") || model.id.includes("o4");
+    const promptTokens = rand(isBigModel ? 20_000 : 4_000, isBigModel ? 200_000 : 60_000);
+    const outputTokens = rand(100, model.id.includes("codex") ? 6_000 : 2_500);
+    const thinkingTokens = model.thinking ? rand(0, 2_000) : 0;
+    const toolRounds = rand(0, 4);
+    const toolCallRounds = [];
+    for (let r = 0; r < toolRounds; r++) {
+      const toolCount = rand(1, 3);
+      const toolCalls = [];
+      for (let u = 0; u < toolCount; u++) {
+        toolCalls.push({
+          id: `toolu_vrtx_${idFrom(sessionId + t + r + u)}`,
+          name: pick(COPILOT_TOOLS),
+          arguments: JSON.stringify({ query: "demo", path: cwd ? `${cwd}/src` : "/tmp" }),
+          type: "function",
+        });
+      }
+      toolCallRounds.push({
+        response: "",
+        toolCalls,
+        toolInputRetry: 0,
+        id: uuidFrom(`${sessionId}-${t}-${r}`),
+        thinking: { id: `thinking_${t}_${r}`, text: "…", encrypted: "", tokens: thinkingTokens },
+        timestamp: new Date(ts.getTime() + r * 1000).toISOString(),
+      });
+    }
+    lines.push({
+      kind: 1,
+      v: {
+        timings: { firstProgress: rand(100, 4000), totalElapsed: rand(2000, 60_000) },
+        metadata: {
+          promptTokens,
+          outputTokens,
+          toolCallRounds,
+          toolCallResults: toolCallRounds.map(() => ({ toolCallId: `toolu_vrtx_${idFrom(sessionId + Math.random())}`, response: "ok" })),
+          resolvedModel: null, // null in practice — adapter uses the request modelId
+          responseId: `r_${uuidFrom(`${sessionId}-${t}-r`)}`,
+          sessionId,
+          agentId: "github.copilot.editsAgent",
+          modelMessageId: `mm_${uuidFrom(`${sessionId}-${t}-mm`)}`,
+          cacheKey: `ck_${idFrom(sessionId + t)}`,
+          codeBlocks: [],
+          renderedUserMessage: [{ type: 1, text: `<userRequest>${t === 0 ? title : `turn ${t + 1}`}</userRequest>` }],
+          renderedGlobalContext: [{ type: 1, text: `<workspace_info>${cwd || "/Users/demo"}</workspace_info>` }],
+        },
+        details: `${model.name} • ${model.multiplier}x`,
+        usage: {
+          completionTokens: outputTokens,
+          promptTokens,
+          promptTokenDetails: [
+            { category: "System", label: "System Instructions", percentageOfPrompt: 5 },
+            { category: "User Context", label: "Messages", percentageOfPrompt: 55 },
+          ],
+        },
+      },
+    });
+  }
+
+  return { sessionId, title, cwd, start, end, lines };
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
   await rm(OUT, { recursive: true, force: true });
@@ -522,6 +716,7 @@ async function main() {
   let codexCount = 0;
   let antiCount = 0;
   let openCount = 0;
+  let copilotCount = 0;
   const codexIndex = [];
 
   // OpenCode: one SQLite db for all sessions.
@@ -587,6 +782,39 @@ async function main() {
       insertOpen(s);
       openCount++;
     }
+
+    // GitHub Copilot Chat — JSONL chatSessions under workspaceStorage/<hash>/.
+    // One workspace.json per hash dir maps the hash to the workspace folder URI;
+    // the adapter reads it to resolve cwd. One chatSessions/<id>.jsonl per
+    // session, matching the {kind, v} format the adapter parses by shape.
+    const hash = hashFrom(project.cwd);
+    const wsDir = join(COPILOT_OUT, "workspaceStorage", hash);
+    const chatDir = join(wsDir, "chatSessions");
+    await mkdir(chatDir, { recursive: true });
+    await writeFile(join(wsDir, "workspace.json"), JSON.stringify({ folder: `file://${project.cwd}` }) + "\n", "utf8");
+    const copilotPer = rand(3, 7);
+    for (let i = 0; i < copilotPer; i++) {
+      const dayOffset = rand(0, 29);
+      const s = makeCopilotSession({ project, dayOffset, idx: i, emptyWindow: false });
+      const file = join(chatDir, `${s.sessionId}.jsonl`);
+      const body = s.lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
+      await writeFile(file, body, "utf8");
+      copilotCount++;
+    }
+  }
+
+  // GitHub Copilot Chat — empty-window sessions (no workspace, cwd=null →
+  // project "Copilot (empty window)"). These live under globalStorage/.
+  const emptyDir = join(COPILOT_OUT, "globalStorage", "emptyWindowChatSessions");
+  await mkdir(emptyDir, { recursive: true });
+  const emptyPer = rand(3, 6);
+  for (let i = 0; i < emptyPer; i++) {
+    const dayOffset = rand(0, 29);
+    const s = makeCopilotSession({ project: null, dayOffset, idx: i, emptyWindow: true });
+    const file = join(emptyDir, `${s.sessionId}.jsonl`);
+    const body = s.lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
+    await writeFile(file, body, "utf8");
+    copilotCount++;
   }
 
   // Codex title index
@@ -598,7 +826,7 @@ async function main() {
   opencodeDb.close();
 
   console.log(
-    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")}, ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}, ${antiCount} Antigravity transcripts to ${ANTI_OUT}, and ${openCount} OpenCode sessions to ${join(OPENCODE_OUT, "opencode.db")}`,
+    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")}, ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}, ${antiCount} Antigravity transcripts to ${ANTI_OUT}, ${openCount} OpenCode sessions to ${join(OPENCODE_OUT, "opencode.db")}, and ${copilotCount} Copilot Chat sessions to ${COPILOT_OUT}`,
   );
 }
 

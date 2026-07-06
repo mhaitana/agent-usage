@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
       "./demo-data/opencode/**/*.db",
       "./demo-data/opencode/**/*.db-wal",
       "./demo-data/opencode/**/*.db-shm",
+      // GitHub Copilot Chat demo sessions (chatSessions JSONL + the
+      // workspace.json folder maps the adapter reads to resolve cwd).
+      "./demo-data/copilot/**/*.jsonl",
+      "./demo-data/copilot/**/workspace.json",
     ],
   },
 };
