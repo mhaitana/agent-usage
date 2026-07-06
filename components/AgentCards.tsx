@@ -5,11 +5,12 @@ import { formatCost, formatTokens } from "@/lib/format";
 
 /**
  * One summary card per registered agent, for the overview hub. Each card
- * links to that agent's own page (`/{slug}`) and shows its session count,
- * total tokens, and API-price-equivalent cost. If the agent's data dir wasn't
- * found, the card shows a muted "not found" state with a hint to set its env
- * override (the card still links through to the page, which surfaces the
- * banner).
+ * links to that agent's own page (`/{slug}`). Token-bearing agents show
+ * Sessions / Tokens / Est. cost; activity-only agents (no on-disk token data,
+ * e.g. Antigravity) show Sessions / Messages / Tool calls instead. If the
+ * agent's data dir wasn't found, the card shows a muted "not found" state with
+ * a hint to set its env override (the card still links through to the page,
+ * which surfaces the banner).
  */
 export interface AgentCard {
   slug: string;
@@ -19,6 +20,11 @@ export interface AgentCard {
   sessions: number;
   totalTokens: number;
   cost: number;
+  /** Whether this adapter exposes per-request token/cost data. */
+  hasTokenData: boolean;
+  /** Activity counts — shown on token-less cards instead of tokens/cost. */
+  messages: number;
+  toolCallCount: number;
 }
 
 // Pastel chip palette — cycle through the on-theme block tokens so each card
@@ -79,9 +85,18 @@ export default function AgentCards({ cards }: { cards: AgentCard[] }) {
                 className="mt-auto grid grid-cols-3 gap-2 border-t-[3px] pt-3"
                 style={{ borderColor: "var(--text)" }}
               >
-                <Stat label="Sessions" value={String(c.sessions)} />
-                <Stat label="Tokens" value={formatTokens(c.totalTokens)} />
-                <Stat label="Est. cost" value={formatCost(c.cost)} />
+                <Stat label="Sessions" value={c.sessions.toLocaleString()} />
+                {c.hasTokenData ? (
+                  <>
+                    <Stat label="Tokens" value={formatTokens(c.totalTokens)} />
+                    <Stat label="Est. cost" value={formatCost(c.cost)} />
+                  </>
+                ) : (
+                  <>
+                    <Stat label="Messages" value={c.messages.toLocaleString()} />
+                    <Stat label="Tool calls" value={c.toolCallCount.toLocaleString()} />
+                  </>
+                )}
               </div>
             ) : (
               <div

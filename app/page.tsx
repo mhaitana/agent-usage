@@ -20,14 +20,14 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Overview · Agent Usage",
   description:
-    "Combined token, cost, and session usage across all coding agents — Claude Code and Codex.",
+    "Combined token, cost, and session usage across all coding agents — Claude Code, Codex, and Antigravity.",
 };
 
 export default async function Home() {
   const ds = await getUsageDataset();
 
   // Per-agent summary cards: merge adapter status (name/dirLabel/available/
-  // sessions) with per-adapter token + cost totals.
+  // sessions/hasTokenData) with per-adapter token + cost + activity totals.
   const totals = new Map(
     perAdapterTotals(ds).map((t) => [t.slug, t]),
   );
@@ -41,10 +41,19 @@ export default async function Home() {
       sessions: a.sessions,
       totalTokens: t?.totalTokens ?? 0,
       cost: t?.cost ?? 0,
+      hasTokenData: a.hasTokenData,
+      messages: t?.messages ?? 0,
+      toolCallCount: t?.toolCalls ?? 0,
     };
   });
 
   const subtitle = ds.adapters.map((a) => a.dirLabel).join(" + ");
+
+  // Adapter slugs with no on-disk token data — their rows in the combined
+  // sessions table render "—" in the Tokens/Est. cost cells (honest zeros).
+  const tokenLessAdapters = new Set(
+    ds.adapters.filter((a) => !a.hasTokenData).map((a) => a.slug),
+  );
 
   return (
     <div className="min-h-dvh">
@@ -86,7 +95,7 @@ export default async function Home() {
         </section>
 
         <section className="mb-10">
-          <SessionTable sessions={ds.sessions} />
+          <SessionTable sessions={ds.sessions} tokenLessAdapters={tokenLessAdapters} />
         </section>
 
         <SiteFooter />

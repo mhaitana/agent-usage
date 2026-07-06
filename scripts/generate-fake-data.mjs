@@ -3,14 +3,16 @@
 //   - Claude Code sessions  → demo-data/projects/<slug>/<id>.jsonl
 //   - Codex rollouts        → demo-data/codex/sessions/YYYY/MM/DD/rollout-*.jsonl
 //     plus demo-data/codex/session_index.jsonl (id → thread_name index)
+//   - Antigravity transcripts → demo-data/antigravity/brain/<uuid>/.system_generated/logs/transcript_full.jsonl
 //
-// Both match the on-disk shapes the adapters read. Run:
+// All three match the on-disk shapes the adapters read. Run:
 //
 //   node scripts/generate-fake-data.mjs
 //
 // Then deploy with:
 //   CLAUDE_DIR=./demo-data            (→ ./demo-data/projects)
 //   CODEX_DIR=./demo-data/codex       (→ ./demo-data/codex/sessions + index)
+//   ANTIGRAVITY_DIR=./demo-data/antigravity  (→ ./demo-data/antigravity/brain)
 //
 // (relative to the project root, which is the runtime cwd on Vercel). Re-run
 // any time to regenerate / expand.
@@ -24,6 +26,7 @@ import { dirname, join, resolve } from "node:path";
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "demo-data");
 const CODEX_OUT = join(OUT, "codex");
+const ANTI_OUT = join(OUT, "antigravity");
 
 const CLAUDE_MODELS = [
   "claude-sonnet-5",
@@ -33,6 +36,8 @@ const CLAUDE_MODELS = [
 ];
 
 const CODEX_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5-mini"];
+
+const ANTIGRAVITY_MODELS = ["Gemini 3.5 Flash", "Gemini 3.1 Pro", "Gemini 3 Flash"];
 
 // Shared project set — same cwds for both tools so the overview's by-project
 // view shows them merged (one person, two tools, same repos).
@@ -55,6 +60,7 @@ const TITLE_FRAGMENTS = [
 
 const CLAUDE_TOOLS = ["Read", "Edit", "Write", "Bash", "Grep", "Glob", "TodoWrite"];
 const CODEX_TOOLS = ["shell", "apply_patch", "read_file", "grep", "list_dir"];
+const ANTIGRAVITY_TOOLS = ["view_file", "edit_file", "grep_search", "run_command", "list_directory", "search_web"];
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -273,11 +279,117 @@ function makeCodexSession({ project, dayOffset, idx }) {
 }
 
 // ---------------------------------------------------------------------------
+// Antigravity (activity-only — no token data on disk)
+// ---------------------------------------------------------------------------
+
+function makeAntigravitySession({ project, dayOffset, idx }) {
+  const sessionId = uuidFrom(`anti-${project.slug}-${dayOffset}-${idx}`);
+  const start = new Date();
+  start.setDate(start.getDate() - dayOffset);
+  start.setHours(rand(8, 22), rand(0, 59), 0, 0);
+  const durationMin = rand(4, 90);
+  const end = new Date(start.getTime() + durationMin * 60_000);
+
+  const title = `${project.titlePrefix}: ${pick(TITLE_FRAGMENTS)}`;
+  const cwd = project.cwd;
+  const model = pick(ANTIGRAVITY_MODELS);
+  const tier = pick(["High", "Medium", "Low"]);
+  const lines = [];
+  let step = 0;
+  function rec(r) { lines.push({ step_index: step++, ...r }); }
+
+  // Initial USER_INPUT: model selection (from None → model) + the user request
+  // + active document metadata. The adapter reads the model from <USER_SETTINGS_CHANGE>
+  // and the title from <USER_REQUEST>, and the cwd from Active Document.
+  rec({
+    source: "user",
+    type: "USER_INPUT",
+    status: "COMPLETED",
+    created_at: isoDate(start),
+    content: [
+      `<USER_REQUEST>${title}</USER_REQUEST>`,
+      `<ADDITIONAL_METADATA>Active Document: ${cwd}/src/main.ts</ADDITIONAL_METADATA>`,
+      `<USER_SETTINGS_CHANGE>Model changed from None to ${model} (${tier}). Reason: user selection.</USER_SETTINGS_CHANGE>`,
+    ].join("\n"),
+  });
+
+  const turns = rand(3, 12);
+  const stepMs = (end.getTime() - start.getTime()) / turns;
+  for (let t = 0; t < turns; t++) {
+    const ts = new Date(start.getTime() + stepMs * t);
+    // Planner response with explicit tool_calls[].
+    const toolCount = rand(1, 4);
+    const toolCalls = [];
+    for (let u = 0; u < toolCount; u++) {
+      toolCalls.push({ name: pick(ANTIGRAVITY_TOOLS), args: { query: "demo", path: `${cwd}/src` } });
+    }
+    rec({
+      source: "planner",
+      type: "PLANNER_RESPONSE",
+      status: "COMPLETED",
+      created_at: isoDate(ts),
+      content: `Planning step ${t + 1}`,
+      tool_calls: toolCalls,
+    });
+
+    // A RUN_COMMAND carrying the CWD: line (authoritative cwd source).
+    rec({
+      source: "executor",
+      type: "RUN_COMMAND",
+      status: "COMPLETED",
+      created_at: isoDate(new Date(ts.getTime() + rand(1, 8) * 1000)),
+      content: `CWD: ${cwd}\n$ pnpm test`,
+    });
+
+    // A couple of tool-exec records without tool_calls[] (counted as tool calls).
+    if (Math.random() < 0.7) {
+      rec({
+        source: "executor",
+        type: "VIEW_FILE",
+        status: "COMPLETED",
+        created_at: isoDate(new Date(ts.getTime() + rand(2, 10) * 1000)),
+        content: `Viewed ${cwd}/src/main.ts`,
+      });
+    }
+    if (Math.random() < 0.5) {
+      rec({
+        source: "executor",
+        type: "CODE_ACTION",
+        status: "COMPLETED",
+        created_at: isoDate(new Date(ts.getTime() + rand(3, 12) * 1000)),
+        content: `Edited ${cwd}/src/main.ts`,
+      });
+    }
+
+    // Follow-up user message.
+    rec({
+      source: "user",
+      type: "USER_INPUT",
+      status: "COMPLETED",
+      created_at: isoDate(new Date(ts.getTime() + rand(4, 15) * 1000)),
+      content: `<USER_REQUEST>turn ${t + 1} follow-up</USER_REQUEST>`,
+    });
+  }
+
+  // Closing system message.
+  rec({
+    source: "system",
+    type: "SYSTEM_MESSAGE",
+    status: "COMPLETED",
+    created_at: isoDate(end),
+    content: "Session complete.",
+  });
+
+  return { sessionId, title, cwd, start, end, lines };
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
   await rm(OUT, { recursive: true, force: true });
   let claudeCount = 0;
   let codexCount = 0;
+  let antiCount = 0;
   const codexIndex = [];
 
   for (const project of PROJECTS) {
@@ -315,6 +427,19 @@ async function main() {
       codexIndex.push({ id: s.sessionId, thread_name: s.title, updated_at: isoDate(s.end) });
       codexCount++;
     }
+
+    // Antigravity — activity-only (no token data on disk)
+    const antiPer = rand(3, 6);
+    for (let i = 0; i < antiPer; i++) {
+      const dayOffset = rand(0, 29);
+      const s = makeAntigravitySession({ project, dayOffset, idx: i });
+      const dir = join(ANTI_OUT, "brain", s.sessionId, ".system_generated", "logs");
+      await mkdir(dir, { recursive: true });
+      const file = join(dir, "transcript_full.jsonl");
+      const body = s.lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
+      await writeFile(file, body, "utf8");
+      antiCount++;
+    }
   }
 
   // Codex title index
@@ -324,7 +449,7 @@ async function main() {
   await writeFile(join(CODEX_OUT, "session_index.jsonl"), indexBody, "utf8");
 
   console.log(
-    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")} and ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}`,
+    `Wrote ${claudeCount} Claude sessions to ${join(OUT, "projects")}, ${codexCount} Codex rollouts (+ index) to ${CODEX_OUT}, and ${antiCount} Antigravity transcripts to ${ANTI_OUT}`,
   );
 }
 

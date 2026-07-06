@@ -21,9 +21,10 @@ import type {
 import type { Adapter, DiscoveredSession } from "./adapters/types";
 import { claudeAdapter } from "./adapters/claude";
 import { codexAdapter } from "./adapters/codex";
+import { antigravityAdapter } from "./adapters/antigravity";
 
 // Registered adapters, in the order they appear in the header banner / status.
-const ADAPTERS: Adapter[] = [claudeAdapter, codexAdapter];
+const ADAPTERS: Adapter[] = [claudeAdapter, codexAdapter, antigravityAdapter];
 
 // --- in-memory mtime cache ------------------------------------------------
 
@@ -88,6 +89,7 @@ export async function getUsageDataset(): Promise<UsageDataset> {
       slug: adapter.slug,
       dirLabel: adapter.dirLabel(),
       available,
+      hasTokenData: adapter.hasTokenData,
       sessions: count,
     });
   }
@@ -105,8 +107,18 @@ export function knownSlugs(): string[] {
 /** Adapter display meta (name + slug + dirLabel) without parsing any sessions.
  *  Cheap: used by `generateMetadata` on per-agent pages so they can resolve a
  *  slug → name without running the full dataset fan-out. */
-export function adapterMeta(): { slug: string; name: string; dirLabel: string }[] {
-  return ADAPTERS.map((a) => ({ slug: a.slug, name: a.name, dirLabel: a.dirLabel() }));
+export function adapterMeta(): {
+  slug: string;
+  name: string;
+  dirLabel: string;
+  hasTokenData: boolean;
+}[] {
+  return ADAPTERS.map((a) => ({
+    slug: a.slug,
+    name: a.name,
+    dirLabel: a.dirLabel(),
+    hasTokenData: a.hasTokenData,
+  }));
 }
 
 /** Re-aggregate a dataset to a single adapter by filtering its sessions.
@@ -118,17 +130,34 @@ export function scopeDataset(ds: UsageDataset, slug: string): UsageDataset {
   return buildDataset(scoped, ds.adapters);
 }
 
-/** Per-adapter token + cost totals (for the overview hub cards). Computed by
- *  grouping `ds.sessions` by `adapter`; merge with `ds.adapters` for
- *  name / dirLabel / available / session count. */
+/** Per-adapter totals (for the overview hub cards). Computed by grouping
+ *  `ds.sessions` by `adapter`; merge with `ds.adapters` for name / dirLabel /
+ *  available / session count. Includes messages + toolCalls so token-less
+ *  adapters (Antigravity) can show activity stats instead of zero tokens. */
 export function perAdapterTotals(
   ds: UsageDataset,
-): { slug: string; totalTokens: number; cost: number }[] {
-  const map = new Map<string, { totalTokens: number; cost: number }>();
+): {
+  slug: string;
+  totalTokens: number;
+  cost: number;
+  messages: number;
+  toolCalls: number;
+}[] {
+  const map = new Map<
+    string,
+    { totalTokens: number; cost: number; messages: number; toolCalls: number }
+  >();
   for (const s of ds.sessions) {
-    const e = map.get(s.adapter) ?? { totalTokens: 0, cost: 0 };
+    const e = map.get(s.adapter) ?? {
+      totalTokens: 0,
+      cost: 0,
+      messages: 0,
+      toolCalls: 0,
+    };
     e.totalTokens += s.totalTokens;
     e.cost += s.cost;
+    e.messages += s.messageCount;
+    e.toolCalls += s.toolCallCount;
     map.set(s.adapter, e);
   }
   return [...map.entries()].map(([slug, v]) => ({ slug, ...v }));

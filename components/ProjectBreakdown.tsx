@@ -17,12 +17,23 @@ import { Card, CardHeader } from "@/components/ui/Card";
 
 export default function ProjectBreakdown({
   byProject,
+  metric = "tokens",
 }: {
   byProject: ProjectTotal[];
+  /** "tokens" (default) ranks projects by token volume; "sessions" ranks by
+   *  session count, for activity-only adapters. */
+  metric?: "tokens" | "sessions";
 }) {
+  const sessionsMode = metric === "sessions";
+  // Token mode: drop 0-token projects so token-less adapters (Antigravity
+  // projects with all-zero tokens) don't displace real ones in the top 12.
+  // Sessions mode: rank by sessions, every project with ≥1 session is real.
   const data = byProject
     .slice()
-    .sort((a, b) => b.totalTokens - a.totalTokens)
+    .filter((p) => (sessionsMode ? p.sessions > 0 : p.totalTokens > 0))
+    .sort((a, b) =>
+      sessionsMode ? b.sessions - a.sessions : b.totalTokens - a.totalTokens,
+    )
     .slice(0, 12)
     .map((p, i) => ({
       name: p.project,
@@ -32,11 +43,13 @@ export default function ProjectBreakdown({
       color: seriesColor(i),
     }));
 
+  const dataKey = sessionsMode ? "sessions" : "tokens";
+
   return (
     <Card className="p-4" hover>
       <CardHeader
         title="By project"
-        subtitle="Top projects by tokens"
+        subtitle={sessionsMode ? "Top projects by sessions" : "Top projects by tokens"}
         action={
           data.length > 0 ? (
             <span className="tabular" style={{ color: "var(--text-muted)" }}>
@@ -54,10 +67,13 @@ export default function ProjectBreakdown({
           <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 0, bottom: 0 }}>
             <XAxis
               type="number"
-              tickFormatter={(v) => formatTokens(Number(v))}
+              tickFormatter={(v) =>
+                sessionsMode ? Number(v).toLocaleString() : formatTokens(Number(v))
+              }
               tick={{ fill: "var(--text-muted)", fontSize: 11 }}
               tickLine={false}
               axisLine={false}
+              allowDecimals={false}
             />
             <YAxis
               type="category"
@@ -67,9 +83,12 @@ export default function ProjectBreakdown({
               axisLine={false}
               width={140}
             />
-            <Tooltip content={<ProjectTooltip />} cursor={{ fill: "var(--border)", radius: 4 }} />
+            <Tooltip
+              content={<ProjectTooltip sessions={sessionsMode} />}
+              cursor={{ fill: "var(--border)", radius: 4 }}
+            />
             <Bar
-              dataKey="tokens"
+              dataKey={dataKey}
               radius={[0, 4, 4, 0]}
               stroke="var(--text)"
               strokeWidth={2}
@@ -80,9 +99,11 @@ export default function ProjectBreakdown({
                 <Cell key={d.name} fill={d.color} />
               ))}
               <LabelList
-                dataKey="tokens"
+                dataKey={dataKey}
                 position="right"
-                formatter={(v: unknown) => formatTokens(Number(v))}
+                formatter={(v: unknown) =>
+                  sessionsMode ? Number(v).toLocaleString() : formatTokens(Number(v))
+                }
                 style={{ fill: "var(--text-muted)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}
               />
             </Bar>
@@ -102,9 +123,11 @@ interface ProjectRow {
 function ProjectTooltip({
   active,
   payload,
+  sessions,
 }: {
   active?: boolean;
   payload?: { payload: ProjectRow }[];
+  sessions: boolean;
 }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
@@ -122,9 +145,11 @@ function ProjectTooltip({
       <div className="font-bold" style={{ color: "var(--text)" }}>
         {p.name}
       </div>
-      <div className="tabular" style={{ color: "var(--text-muted)" }}>
-        {formatTokens(p.tokens)} tokens · {formatCost(p.cost)}
-      </div>
+      {!sessions && (
+        <div className="tabular" style={{ color: "var(--text-muted)" }}>
+          {formatTokens(p.tokens)} tokens · {formatCost(p.cost)}
+        </div>
+      )}
       <div className="tabular" style={{ color: "var(--text-muted)" }}>
         {p.sessions} session{p.sessions === 1 ? "" : "s"}
       </div>

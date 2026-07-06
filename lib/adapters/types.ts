@@ -31,6 +31,12 @@ export interface Adapter {
   readonly name: string;
   /** URL-safe id used for per-agent routes + nav (e.g. "claude", "codex"). */
   readonly slug: string;
+  /** Whether this tool persists per-request token usage to disk. True for
+   *  adapters whose tool writes token counts (Claude, Codex); false for
+   *  activity-only adapters whose tool keeps usage server-side (Antigravity).
+   *  The UI uses this to swap token/cost panels for activity panels on the
+   *  adapter's per-agent page and to render honest "—" cells in mixed tables. */
+  readonly hasTokenData: boolean;
   /** Whether this tool's data directory exists on this machine. */
   isAvailable(): Promise<boolean>;
   /** Enumerate this tool's session files. */

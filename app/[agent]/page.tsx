@@ -29,7 +29,9 @@ export async function generateMetadata({
   if (!meta) return {};
   return {
     title: meta.name,
-    description: `Token, cost, and session usage for ${meta.name}, read live from ${meta.dirLabel}.`,
+    description: meta.hasTokenData
+      ? `Token, cost, and session usage for ${meta.name}, read live from ${meta.dirLabel}.`
+      : `Session and activity usage (messages, tool calls, projects, models) for ${meta.name}, read live from ${meta.dirLabel}. No token or cost data is stored on disk.`,
   };
 }
 
@@ -72,7 +74,8 @@ export default async function AgentPage({
             <code className="mono">{`${active.slug.toUpperCase()}_DIR`}</code> to
             point at its data.
           </div>
-        ) : (
+        ) : active.hasTokenData ? (
+          // Token-bearing agent (Claude, Codex): the full token/cost panel set.
           <>
             <section className="mb-8">
               <KpiTiles totals={scoped.totals} daily={scoped.daily} />
@@ -93,6 +96,49 @@ export default async function AgentPage({
 
             <section className="mb-10">
               <SessionTable sessions={scoped.sessions} />
+            </section>
+          </>
+        ) : (
+          // Activity-only agent (Antigravity): no on-disk token/cost data, so
+          // swap every token-centric panel for its activity equivalent.
+          <>
+            <div
+              className="soft-clay mb-8 p-4 text-xs font-semibold leading-relaxed"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {active.name} doesn&apos;t write token or cost data to disk —
+              showing activity (sessions, messages, tool calls) instead. Token
+              and cost panels are Claude + Codex only.
+            </div>
+
+            <section className="mb-8">
+              <KpiTiles
+                totals={scoped.totals}
+                daily={scoped.daily}
+                byModel={scoped.byModel}
+                byProject={scoped.byProject}
+                mode="activity"
+              />
+            </section>
+
+            <section className="mb-8 grid gap-5 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <DailyChart daily={scoped.daily} mode="sessions" />
+              </div>
+              <div>
+                <ModelBreakdown byModel={scoped.byModel} mode="sessions" />
+              </div>
+            </section>
+
+            <section className="mb-8">
+              <ProjectBreakdown byProject={scoped.byProject} metric="sessions" />
+            </section>
+
+            <section className="mb-10">
+              <SessionTable
+                sessions={scoped.sessions}
+                tokenLessAdapters={new Set([agent])}
+              />
             </section>
           </>
         )}

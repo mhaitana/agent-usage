@@ -28,17 +28,23 @@ interface RechartsTooltipProps {
 
 interface Props {
   daily: DailyPoint[];
+  /** "tokens" (default) stacks tokens by model; "sessions" plots a single
+   *  sessions-per-day area for activity-only adapters (Antigravity). */
+  mode?: "tokens" | "sessions";
 }
 
-export default function DailyChart({ daily }: Props) {
+export default function DailyChart({ daily, mode = "tokens" }: Props) {
+  // Hidden series set — toggled by clicking the legend. Declared before the
+  // mode early-return so hook order stays stable across renders.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+
+  if (mode === "sessions") return <SessionsChart daily={daily} />;
+
   // Collect all models across days in stable order.
   const modelSet = new Set<string>();
   for (const d of daily) for (const m of d.byModel) modelSet.add(m.model);
   const models = [...modelSet].sort();
   const colorMap = buildColorMap(models);
-
-  // Hidden series set — toggled by clicking the legend.
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
 
   // Flatten into one row per day with a column per model.
   const data = daily.map((d) => {
@@ -237,6 +243,108 @@ function EmptyState() {
       style={{ color: "var(--text-muted)" }}
     >
       No session data found yet.
+    </div>
+  );
+}
+
+/** Single-area sessions-per-day chart for activity-only adapters. Same clay
+ *  card chrome as the token chart; Y axis is a plain count, no model legend. */
+function SessionsChart({ daily }: { daily: DailyPoint[] }) {
+  const data = daily.map((d) => ({ date: d.date, sessions: d.sessions }));
+  const peak = data.reduce((m, d) => Math.max(m, d.sessions), 0);
+
+  return (
+    <Card className="p-4" hover>
+      <CardHeader
+        title="Daily sessions"
+        subtitle="Sessions per day"
+        action={
+          data.length > 0 ? (
+            <span className="tabular" style={{ color: "var(--text-muted)" }}>
+              {data.length}d
+            </span>
+          ) : undefined
+        }
+      />
+      {data.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id="grad-sessions" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--series-1)" stopOpacity={0.95} />
+                <stop offset="100%" stopColor="var(--series-1)" stopOpacity={0.7} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="var(--border)" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(v) => formatDay(String(v))}
+              tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: "var(--border)" }}
+              minTickGap={28}
+            />
+            <YAxis
+              tickFormatter={(v) => Number(v).toLocaleString()}
+              tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              width={44}
+              allowDecimals={false}
+            />
+            <Tooltip
+              cursor={{ stroke: "var(--text-muted)", strokeDasharray: "3 3", strokeWidth: 1 }}
+              content={<SessionsTooltip />}
+            />
+            <Area
+              type="monotone"
+              dataKey="sessions"
+              stroke="var(--text)"
+              strokeWidth={1.5}
+              fill="url(#grad-sessions)"
+              isAnimationActive={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+      {peak > 0 && (
+        <div
+          className="mt-3 text-xs font-semibold"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <span className="tabular">Peak {peak.toLocaleString()}</span> sessions/day
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function SessionsTooltip({
+  active,
+  payload,
+  label,
+}: RechartsTooltipProps) {
+  if (!active || !payload?.length) return null;
+  const v = Number(payload[0]?.value ?? 0);
+  return (
+    <div
+      className="text-xs"
+      style={{
+        background: "var(--bg)",
+        border: "3px solid var(--text)",
+        borderRadius: "var(--radius-card)",
+        boxShadow: "5px 5px 0 var(--shadow-hard)",
+        padding: "12px",
+      }}
+    >
+      <div className="mb-1.5 font-medium" style={{ color: "var(--text)" }}>
+        {label ? formatFullDate(String(label)) : ""}
+      </div>
+      <div className="tabular" style={{ color: "var(--text-muted)" }}>
+        {v.toLocaleString()} sessions
+      </div>
     </div>
   );
 }

@@ -1,0 +1,19 @@
+{"type":"session_meta","timestamp":"2026-07-06T08:45:00.000Z","payload":{"id":"b7ab6272-b6ab-b5ab-b4ab-0000b3ab5c26","session_id":"b7ab6272-b6ab-b5ab-b4ab-0000b3ab5c26","timestamp":"2026-07-06T08:45:00.000Z","cwd":"/Users/demo/Projects/mobile","originator":"codex_cli","cli_version":"0.142.0-alpha.1","source":"cli","thread_source":"user","model_provider":"openai"}}
+{"type":"turn_context","timestamp":"2026-07-06T08:45:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-07-06T08:45:00.000Z","payload":{"type":"user_message","message":"turn 1","role":"user"}}
+{"type":"response_item","timestamp":"2026-07-06T08:45:08.000Z","payload":{"type":"custom_tool_call","name":"read_file","call_id":"call_5a952020","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:45:09.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:45:18.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":26358,"cached_input_tokens":14633,"output_tokens":3479,"reasoning_output_tokens":628,"total_tokens":29837},"total_token_usage":{"input_tokens":26358,"cached_input_tokens":14633,"output_tokens":3479,"reasoning_output_tokens":0,"total_tokens":29837}}}}
+{"type":"turn_context","timestamp":"2026-07-06T08:48:30.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-07-06T08:48:30.000Z","payload":{"type":"user_message","message":"turn 2","role":"user"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:48:42.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:48:49.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":30363,"cached_input_tokens":20105,"output_tokens":3186,"reasoning_output_tokens":1857,"total_tokens":33549},"total_token_usage":{"input_tokens":56721,"cached_input_tokens":34738,"output_tokens":6665,"reasoning_output_tokens":0,"total_tokens":63386}}}}
+{"type":"turn_context","timestamp":"2026-07-06T08:52:00.000Z","payload":{"model":"gpt-5-mini","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-07-06T08:52:00.000Z","payload":{"type":"user_message","message":"turn 3","role":"user"}}
+{"type":"response_item","timestamp":"2026-07-06T08:52:02.000Z","payload":{"type":"custom_tool_call","name":"shell","call_id":"call_6699b032","args":"{}"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:52:12.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:52:05.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":33902,"cached_input_tokens":0,"output_tokens":3276,"reasoning_output_tokens":55,"total_tokens":37178},"total_token_usage":{"input_tokens":90623,"cached_input_tokens":34738,"output_tokens":9941,"reasoning_output_tokens":0,"total_tokens":100564}}}}
+{"type":"turn_context","timestamp":"2026-07-06T08:55:30.000Z","payload":{"model":"gpt-5.5","input_history":[],"tools":[]}}
+{"type":"event_msg","timestamp":"2026-07-06T08:55:30.000Z","payload":{"type":"user_message","message":"turn 4","role":"user"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:55:38.000Z","payload":{"type":"agent_message","message":"ok"}}
+{"type":"event_msg","timestamp":"2026-07-06T08:55:41.000Z","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":136117,"cached_input_tokens":105612,"output_tokens":1184,"reasoning_output_tokens":601,"total_tokens":137301},"total_token_usage":{"input_tokens":226740,"cached_input_tokens":140350,"output_tokens":11125,"reasoning_output_tokens":0,"total_tokens":237865}}}}

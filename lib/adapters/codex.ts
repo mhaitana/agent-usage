@@ -374,6 +374,7 @@ async function walkJsonl(dir: string): Promise<string[]> {
 export const codexAdapter: Adapter = {
   name: "Codex",
   slug: "codex",
+  hasTokenData: true,
 
   dirLabel(): string {
     return tilde(sessionsDir());

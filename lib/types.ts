@@ -104,6 +104,8 @@ export interface AdapterStatus {
   dirLabel: string;
   /** Whether the tool's data directory was present on this machine. */
   available: boolean;
+  /** Whether this adapter exposes per-request token/cost data (see Adapter.hasTokenData). */
+  hasTokenData: boolean;
   /** Number of sessions parsed from this adapter this run. */
   sessions: number;
 }

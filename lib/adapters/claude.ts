@@ -291,6 +291,7 @@ function durationMs(first: string | null, last: string | null): number {
 export const claudeAdapter: Adapter = {
   name: "Claude Code",
   slug: "claude",
+  hasTokenData: true,
 
   dirLabel(): string {
     return tilde(projectsDir());

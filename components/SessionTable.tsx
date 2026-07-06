@@ -38,11 +38,34 @@ const COLUMNS: { key: SortKey; label: string; align: "left" | "right"; sortable:
 
 const INITIAL_PAGE_SIZE = 25;
 
-export default function SessionTable({ sessions }: { sessions: Session[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("totalTokens");
+export default function SessionTable({
+  sessions,
+  tokenLessAdapters,
+}: {
+  sessions: Session[];
+  /** Adapter slugs that don't expose token/cost data. On a mixed table
+   *  (overview) their rows render "—" in the Tokens/Est. cost cells; on an
+   *  all-token-less table (per-agent /antigravity) those columns are dropped. */
+  tokenLessAdapters?: Set<string>;
+}) {
+  const allTokenLess =
+    sessions.length > 0 &&
+    (tokenLessAdapters
+      ? sessions.every((s) => tokenLessAdapters.has(s.adapter))
+      : false);
+  // Drop the Tokens + Est. cost columns when every row is token-less; else
+  // keep them (mixed overview) and render "—" per token-less row.
+  const columns = allTokenLess
+    ? COLUMNS.filter((c) => c.key !== "totalTokens" && c.key !== "cost")
+    : COLUMNS;
+  const [sortKey, setSortKey] = useState<SortKey>(
+    allTokenLess ? "toolCallCount" : "totalTokens",
+  );
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(INITIAL_PAGE_SIZE);
+
+  const isTokenLess = (a: string) => !!tokenLessAdapters?.has(a);
 
   // One stable model→color map across all sessions (sorted, same rule as charts).
   const allModels = useMemo(() => {
@@ -156,15 +179,16 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
           <div className="max-h-[600px] overflow-auto">
             <table className="w-full border-collapse text-xs">
               <caption className="sr-only">
-                Claude Code sessions, sortable by last seen, project, title,
-                messages, tool calls, tokens, cost, and duration.
+                Agent sessions, sortable by last seen, project, title, models,
+                messages, tool calls
+                {allTokenLess ? "" : ", tokens, cost"}, and duration.
               </caption>
               <thead
                 className="sticky top-0 z-10"
                 style={{ background: "var(--bg)" }}
               >
                 <tr style={{ borderBottom: "2px solid var(--text)" }}>
-                  {COLUMNS.map((c) => {
+                  {columns.map((c) => {
                     const isSorted = sortKey === c.key;
                     const ariaSort = !c.sortable
                       ? "none"
@@ -268,12 +292,20 @@ export default function SessionTable({ sessions }: { sessions: Session[] }) {
                     <td
                       className="tabular px-3 py-2 text-right font-medium"
                       style={{ color: "var(--text)" }}
-                      title={formatFullTokens(s.totalTokens)}
+                      title={isTokenLess(s.adapter) ? undefined : formatFullTokens(s.totalTokens)}
                     >
-                      {formatTokens(s.totalTokens)}
+                      {isTokenLess(s.adapter) ? (
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                      ) : (
+                        formatTokens(s.totalTokens)
+                      )}
                     </td>
                     <td className="tabular px-3 py-2 text-right font-medium" style={{ color: "var(--text)" }}>
-                      {formatCost(s.cost)}
+                      {isTokenLess(s.adapter) ? (
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                      ) : (
+                        formatCost(s.cost)
+                      )}
                     </td>
                     <td className="tabular px-3 py-2 text-right" style={{ color: "var(--text-muted)" }}>
                       {formatDuration(s.durationMs)}

@@ -6,17 +6,37 @@ import { buildColorMap } from "@/lib/palette";
 import { formatCost, formatTokens } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 
-export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
+export default function ModelBreakdown({
+  byModel,
+  mode = "tokens",
+}: {
+  byModel: ModelTotal[];
+  /** "tokens" (default) charts each model's share of total tokens; "sessions"
+   *  charts each model's share of sessions, for activity-only adapters. */
+  mode?: "tokens" | "sessions";
+}) {
+  const sessionsMode = mode === "sessions";
   const models = byModel.map((m) => m.model);
   const colorMap = buildColorMap(models);
+  // Token mode: drop 0-token models so token-less adapters (Antigravity models
+  // with all-zero tokens) don't clutter the combined overview donut. Sessions
+  // mode: every model with ≥1 session is real, keep all.
   const data = byModel
-    .map((m) => ({ name: m.model, tokens: m.totalTokens, cost: m.cost }))
-    .sort((a, b) => b.tokens - a.tokens);
-  const grandTotal = data.reduce((s, d) => s + d.tokens, 0);
+    .map((m) =>
+      sessionsMode
+        ? { name: m.model, value: m.sessions, cost: m.cost }
+        : { name: m.model, value: m.totalTokens, cost: m.cost },
+    )
+    .filter((d) => d.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const grandTotal = data.reduce((s, d) => s + d.value, 0);
 
   return (
     <Card className="h-full p-4" hover>
-      <CardHeader title="By model" subtitle="Share of total tokens" />
+      <CardHeader
+        title="By model"
+        subtitle={sessionsMode ? "Share of sessions" : "Share of total tokens"}
+      />
       {data.length === 0 ? (
         <Empty />
       ) : (
@@ -26,7 +46,7 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
               <PieChart>
                 <Pie
                   data={data}
-                  dataKey="tokens"
+                  dataKey="value"
                   nameKey="name"
                   innerRadius={52}
                   outerRadius={82}
@@ -39,7 +59,7 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
                     <Cell key={d.name} fill={colorMap.get(d.name)} />
                   ))}
                 </Pie>
-                <Tooltip content={<ModelTooltip />} />
+                <Tooltip content={<ModelTooltip sessions={sessionsMode} />} />
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -47,19 +67,19 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
                 className="tabular text-xl font-extrabold leading-none"
                 style={{ color: "var(--text)" }}
               >
-                {formatTokens(grandTotal)}
+                {sessionsMode ? grandTotal.toLocaleString() : formatTokens(grandTotal)}
               </span>
               <span
                 className="mt-1 text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: "var(--text-muted)" }}
               >
-                tokens
+                {sessionsMode ? "sessions" : "tokens"}
               </span>
             </div>
           </div>
           <div className="flex-1 space-y-2.5">
             {data.map((d) => {
-              const pct = grandTotal ? (d.tokens / grandTotal) * 100 : 0;
+              const pct = grandTotal ? (d.value / grandTotal) * 100 : 0;
               return (
                 <div key={d.name} className="text-xs">
                   <div className="flex items-center justify-between gap-2">
@@ -102,8 +122,12 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
                     className="tabular mt-1 flex justify-between pl-4"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    <span>{formatTokens(d.tokens)} tokens</span>
-                    <span>{formatCost(d.cost)}</span>
+                    <span>
+                      {sessionsMode
+                        ? `${d.value.toLocaleString()} sessions`
+                        : `${formatTokens(d.value)} tokens`}
+                    </span>
+                    {!sessionsMode && <span>{formatCost(d.cost)}</span>}
                   </div>
                 </div>
               );
@@ -117,15 +141,17 @@ export default function ModelBreakdown({ byModel }: { byModel: ModelTotal[] }) {
 
 interface ModelRow {
   name: string;
-  tokens: number;
+  value: number;
   cost: number;
 }
 function ModelTooltip({
   active,
   payload,
+  sessions,
 }: {
   active?: boolean;
   payload?: { payload: ModelRow }[];
+  sessions: boolean;
 }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
@@ -144,11 +170,15 @@ function ModelTooltip({
         {p.name}
       </div>
       <div className="tabular" style={{ color: "var(--text-muted)" }}>
-        {formatTokens(p.tokens)} tokens
+        {sessions
+          ? `${p.value.toLocaleString()} sessions`
+          : `${formatTokens(p.value)} tokens`}
       </div>
-      <div className="tabular" style={{ color: "var(--text-muted)" }}>
-        {formatCost(p.cost)}
-      </div>
+      {!sessions && (
+        <div className="tabular" style={{ color: "var(--text-muted)" }}>
+          {formatCost(p.cost)}
+        </div>
+      )}
     </div>
   );
 }

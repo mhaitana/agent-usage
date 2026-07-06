@@ -8,7 +8,12 @@ const nextConfig: NextConfig = {
   // Next's file tracer can't see files read via readdir at runtime, so we
   // include them explicitly. See README "Demo deployment".
   outputFileTracingIncludes: {
-    "/*": ["./demo-data/**/*.jsonl"],
+    "/*": [
+      "./demo-data/**/*.jsonl",
+      // Antigravity transcripts live under a dot-dir (.system_generated/logs);
+      // include explicitly in case the tracer skips dot-dirs.
+      "./demo-data/antigravity/brain/**/.system_generated/logs/*.jsonl",
+    ],
   },
 };
 
