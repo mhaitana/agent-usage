@@ -10,7 +10,9 @@ A local-only Next.js dashboard that reads coding-agent usage data live from your
 
 ## Stack
 
-- Next.js 16.2 (App Router) + React 19 + TypeScript, pnpm.
+- Next.js 16.2 (App Router) + React 19 + TypeScript. Any package manager works
+  (no `packageManager` pin in `package.json`); pnpm is used in the commands
+  below and a `pnpm-lock.yaml` is committed, but npm/yarn/bun install equally.
 - Tailwind v4 (`@import "tailwindcss"` in `app/globals.css`; **no `tailwind.config`**).
 - Recharts 3 for charts.
 

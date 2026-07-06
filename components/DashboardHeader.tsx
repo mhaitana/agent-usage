@@ -157,19 +157,21 @@ export default function DashboardHeader({
                 <span>{titleTail}</span>
               </h1>
             </div>
-            <p
-              className="mt-2 text-xs font-semibold"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Live read of <code className="mono">{subtitle}</code> · updated{" "}
-              <time
-                dateTime={generatedAt}
-                className="tabular"
-                style={{ color: "var(--text)" }}
+            {activeSlug !== null && (
+              <p
+                className="mt-2 text-xs font-semibold"
+                style={{ color: "var(--text-muted)" }}
               >
-                {new Date(generatedAt).toLocaleTimeString("en-US")}
-              </time>
-            </p>
+                Live read of <code className="mono">{subtitle}</code> · updated{" "}
+                <time
+                  dateTime={generatedAt}
+                  className="tabular"
+                  style={{ color: "var(--text)" }}
+                >
+                  {new Date(generatedAt).toLocaleTimeString("en-US")}
+                </time>
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

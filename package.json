@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3333",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -30,7 +30,6 @@
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0"
   },
-  "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3"

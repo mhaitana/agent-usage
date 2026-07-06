@@ -72,6 +72,10 @@ pnpm install
 pnpm dev          # http://localhost:3000
 ```
 
+Any package manager works — `npm install`, `yarn install`, or `bun install` are
+equally fine (no `packageManager` pin). The commands below use `pnpm` as the
+example; substitute `npm run` / `yarn` / `bun` as needed.
+
 That's it. The app reads `~/.claude/projects/*/*.jsonl`,
 `~/.codex/sessions/**/*.jsonl`, `~/.local/share/opencode/opencode.db`, and
 `~/.gemini/antigravity-ide/brain/<uuid>/.system_generated/logs/transcript*.jsonl`
@@ -81,7 +85,9 @@ OpenCode, and/or Antigravity in this directory tree, you'll see data immediately
 ### Prerequisites
 
 - Node.js 20+ (Node 24 is used in development)
-- pnpm 10+ (`corepack enable` if you don't have it)
+- Any package manager — pnpm, npm, yarn, or bun. pnpm is used in the examples
+  below; a `pnpm-lock.yaml` is committed but a lockfile from another manager
+  works too.
 - Existing transcripts under `~/.claude/projects/` and/or
   `~/.codex/sessions/` and/or `~/.local/share/opencode/opencode.db` and/or
   `~/.gemini/antigravity-ide/brain/`
