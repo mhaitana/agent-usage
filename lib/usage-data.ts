@@ -122,6 +122,7 @@ export async function getUsageDataset(): Promise<UsageDataset> {
           count++;
         }
       }
+
     }
     statuses.push({
       name: adapter.name,
@@ -133,7 +134,18 @@ export async function getUsageDataset(): Promise<UsageDataset> {
     });
   }
 
-  return buildDataset(sessions, statuses);
+  // Deduplicate sessions by sessionId — some adapters (e.g. Copilot) may
+  // discover the same logical session from multiple on-disk paths (e.g. VS Code
+  // copies a chat session into several workspaceStorage/<hash>/chatSessions/
+  // directories). Keep the first occurrence; later duplicates are discarded.
+  const seenIds = new Set<string>();
+  const dedupedSessions = sessions.filter((s) => {
+    if (seenIds.has(s.sessionId)) return false;
+    seenIds.add(s.sessionId);
+    return true;
+  });
+
+  return buildDataset(dedupedSessions, statuses);
 }
 
 // --- scoping + per-adapter helpers ----------------------------------------
